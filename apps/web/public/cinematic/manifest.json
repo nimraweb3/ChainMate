@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "mode": "css-svg",
+  "camera": "continuous-forward",
+  "paidGenerationApproved": false,
+  "mobileNativeVideoApproved": false,
+  "sections": [
+    { "id": "world", "title": "Every move matters.", "clip": null, "poster": null, "linger": 0.4 },
+    {
+      "id": "rivals",
+      "title": "Find your next rival.",
+      "clip": null,
+      "poster": null,
+      "linger": 0.15
+    },
+    {
+      "id": "arena",
+      "title": "A new way to compete.",
+      "clip": null,
+      "poster": null,
+      "linger": 0.2
+    },
+    {
+      "id": "identity",
+      "title": "Make your moves count.",
+      "clip": null,
+      "poster": null,
+      "linger": 0.4
+    }
+  ],
+  "connectors": []
+}
