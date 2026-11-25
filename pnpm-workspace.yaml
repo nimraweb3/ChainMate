@@ -5,3 +5,4 @@ allowBuilds:
   '@foundry-rs/anvil': false
   '@foundry-rs/forge': false
   esbuild: true
+  workerd: set this to true or false
