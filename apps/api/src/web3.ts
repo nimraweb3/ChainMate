@@ -105,8 +105,10 @@ export function arenaRoutes(
       functionName: 'matches',
       args: [id],
     });
+    const block = await client.getBlock();
     res.json({
       id,
+      chainTimestamp: Number(block.timestamp),
       white: m[0],
       black: m[1],
       stake: m[2].toString(),

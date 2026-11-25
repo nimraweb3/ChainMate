@@ -92,7 +92,7 @@ The Arena browser test requires a running Anvil, deployed contracts and a restar
 ## Repository guide
 
 ```text
-apps/web/              React screens, CSS, original SVG artwork
+apps/web/              React screens, CSS, optimized original artwork
 apps/api/              Express/Socket.IO API and SQL migration
 packages/game-core/    Rules integration, clocks, outcomes, Elo
 packages/shared/       Shared types, controls, bot settings, ABIs
@@ -104,7 +104,7 @@ docs/                  Architecture, threat model, design, deployment
 
 ## Design and supplied skill
 
-The supplied `lets-scroll` SKILL.md informed camera pacing, continuous composition, static fallbacks, mobile handling and reduced-motion behavior. The brief explicitly required a no-cost implementation first. The current experience is original CSS/SVG; the paid generated-video chain is not enabled. Four future prompts and an honest null-asset manifest are included. See `docs/CINEMATIC_ASSETS.md`.
+The supplied `lets-scroll` SKILL.md informed camera pacing, static fallbacks, mobile handling and reduced-motion behavior. The subsequent premium redesign adds original generated chrome/pearl chess artwork, large editorial typography, a legal-move board preview and a shared product visual system. The paid generated-video chain is not enabled. See `docs/DESIGN_SYSTEM.md`, `docs/ARTWORK.md` and `docs/CINEMATIC_ASSETS.md`.
 
 ## Security and limits
 
