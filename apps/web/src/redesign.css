@@ -2362,3 +2362,47 @@ h2 {
     max-width: 60px;
   }
 }
+.atelier-board {
+  border: 10px solid #222e37;
+  border-radius: 9px;
+  background: #222e37;
+  box-shadow:
+    0 0 0 1px #70838d80,
+    0 0 0 3px #0b1116,
+    0 0 0 4px #60737e55,
+    0 24px 60px #0006,
+    inset 0 0 0 1px #d2e0e34d;
+}
+.atelier-board.walnut-board {
+  border-color: #45382e;
+  background: #45382e;
+  box-shadow:
+    0 0 0 1px #bda98b88,
+    0 0 0 3px #171311,
+    0 0 0 4px #a58a6055,
+    0 24px 60px #0006;
+}
+.sculpted-piece {
+  display: block;
+  filter: drop-shadow(0 2px 1px #09111955);
+}
+.atelier-board [data-square] {
+  transition: box-shadow 0.15s ease;
+}
+.live-preview .atelier-board {
+  border-width: 7px;
+}
+@media (max-width: 600px) {
+  .atelier-board {
+    border-width: 6px;
+    border-radius: 5px;
+  }
+  .sculpted-piece {
+    filter: drop-shadow(0 1px 1px #09111955);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atelier-board [data-square] {
+    transition: none;
+  }
+}

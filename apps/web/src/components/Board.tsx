@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { Chess, type Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
+import { sculptedPieces } from './ChessPieces';
 export default function Board({
   chess,
   onMove,
@@ -22,13 +23,23 @@ export default function Board({
     [message, setMessage] = useState('');
   const styles: Record<string, CSSProperties> = {};
   if (lastMove) {
-    styles[lastMove.from] = { backgroundColor: '#d1bb6390' };
-    styles[lastMove.to] = { backgroundColor: '#d1bb6390' };
+    styles[lastMove.from] = {
+      boxShadow: 'inset 0 0 0 3px #c3e1e88a',
+      backgroundColor: warm ? '#b39c75' : '#849fa7',
+    };
+    styles[lastMove.to] = {
+      boxShadow: 'inset 0 0 0 3px #d5edf0bb',
+      backgroundColor: warm ? '#b39c75' : '#849fa7',
+    };
   }
   if (selected) {
-    styles[selected] = { backgroundColor: '#bda15c' };
+    styles[selected] = { backgroundColor: '#8eafb8', boxShadow: 'inset 0 0 0 3px #e2f4f3' };
     for (const m of chess.moves({ square: selected as Square, verbose: true }))
-      styles[m.to] = { backgroundImage: 'radial-gradient(circle, #153b3470 22%, transparent 25%)' };
+      styles[m.to] = {
+        backgroundImage: chess.get(m.to)
+          ? 'radial-gradient(circle, transparent 58%, #b0dce5b0 60%, #b0dce5b0 69%, transparent 71%)'
+          : 'radial-gradient(circle, #213d4b80 17%, #d9f0ed70 19%, transparent 23%)',
+      };
   }
   if (chess.isCheck()) {
     for (const rank of chess.board())
@@ -57,13 +68,24 @@ export default function Board({
   }
   return (
     <>
-      <div className="chessboard-wrap">
+      <div className={`chessboard-wrap atelier-board ${warm ? 'walnut-board' : ''}`}>
         <Chessboard
           options={{
             position: chess.fen(),
             boardOrientation: flipped ? 'black' : 'white',
-            darkSquareStyle: { backgroundColor: warm ? '#937c6a' : '#647987' },
-            lightSquareStyle: { backgroundColor: '#deded7' },
+            pieces: sculptedPieces,
+            darkSquareStyle: {
+              backgroundColor: warm ? '#8b6c53' : '#596e7b',
+              backgroundImage: 'linear-gradient(135deg, #ffffff0a, #07101916)',
+              boxShadow: 'inset 0 0 0 .5px #ffffff0a',
+            },
+            lightSquareStyle: {
+              backgroundColor: warm ? '#e2d5ba' : '#dce1dc',
+              backgroundImage: 'linear-gradient(135deg, #ffffff25, #758b9810)',
+              boxShadow: 'inset 0 0 0 .5px #0000000a',
+            },
+            darkSquareNotationStyle: { color: '#edf2ef', fontSize: '10px', fontWeight: 600 },
+            lightSquareNotationStyle: { color: '#425761', fontSize: '10px', fontWeight: 600 },
             squareStyles: styles,
             allowDragging: !disabled,
             allowAutoScroll: false,
