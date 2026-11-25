@@ -1,0 +1,5 @@
+{
+  "name": "@chainmate/game-core",
+  "private": true,
+  "type": "module"
+}
