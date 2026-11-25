@@ -1,9 +1,41 @@
 import { test, expect } from '@playwright/test';
+
+test('interactive preview, mode selection, mobile menu and reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.locator('.live-preview').scrollIntoViewIfNeeded();
+  const input = page.getByLabel('Keyboard move');
+  await expect(input).toBeEnabled();
+  await input.fill('e7e5');
+  await page.getByRole('button', { name: 'Move', exact: true }).click();
+  await expect(page.locator('.preview-bottom')).toContainText('White to move');
+  await page.getByRole('button', { name: 'Reset preview board' }).click();
+  await expect(page.locator('.preview-bottom')).toContainText('Black to move');
+  await expect(page.locator('.cinema-art')).toHaveCSS('transform', 'none');
+  await page.locator('.mode-dock a').first().click();
+  await expect(page.getByRole('button', { name: '3+2 Blitz' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Toggle navigation' }).click();
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Toggle navigation' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await page.goto('/arena');
+  await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+});
 test('homepage, mobile composition, theme and navigation', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Every move matters.' })).toBeVisible();
+  await expect(page.locator('.cinema h1')).toBeVisible();
   await page.screenshot({ path: '.local/home-desktop.png', fullPage: true });
   await page.getByRole('button', { name: 'Use light theme' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
@@ -11,7 +43,7 @@ test('homepage, mobile composition, theme and navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('body')).toHaveJSProperty('scrollWidth', 390);
   await page.screenshot({ path: '.local/home-mobile.png', fullPage: true });
-  await page.locator('.hero-actions .button').click();
+  await page.locator('.cinema-actions .button').click();
   await expect(page.getByRole('heading', { name: 'Your game. Your way.' })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -72,6 +104,11 @@ test('two browser sessions register, challenge, synchronize, reconnect, finish a
   await b.getByRole('button', { name: 'Resign', exact: true }).click();
   await b.getByRole('button', { name: 'Confirm resignation' }).click();
   await expect(a.getByText(/wins · Resignation/)).toBeVisible();
+  await a.goto('/dashboard');
+  await expect(a.locator('.player-stat-strip')).toBeVisible();
+  await a.screenshot({ path: '.local/review/profile-1440.png', fullPage: true });
+  await a.setViewportSize({ width: 390, height: 844 });
+  await a.screenshot({ path: '.local/review/profile-390.png', fullPage: true });
   await a.goto('/game/' + id + '/replay');
   await expect(a.getByRole('button', { name: 'Next move' })).toBeVisible();
   await ca.close();
