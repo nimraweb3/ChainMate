@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  '@foundry-rs/anvil': false
+  '@foundry-rs/forge': false
+  esbuild: true
