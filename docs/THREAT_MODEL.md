@@ -10,16 +10,16 @@ An anchored canonical record hash demonstrates consistency with the signed off-c
 
 ## Implemented defenses
 
-* Server-side legal moves, participant checks, turn checks and revisions.
-* PostgreSQL transactions and one-time rated-result application.
-* Random opaque session tokens stored as hashes, HttpOnly SameSite=Strict cookies, expiry and socket revalidation.
-* Salted scrypt password hashes; minimum 12-character passwords; input limits and authentication rate limits.
-* Exact allowed HTTP/WebSocket origins. The frontend and API are intended to share an origin through a proxy.
-* SIWE nonce consumption, domain/URI/chain/expiry/signature checks and unique wallet ownership.
-* EIP-712 domain separation, per-match nonce, expiry, fixed participants, fixed allowlisted token, exact transfer balance checks, state guards and reentrancy protection.
-* Chain ID restrictions in constructors: only Anvil 31337 and Base Sepolia 84532.
-* Recovery remains available when new funding/results are paused.
-* Frontend uses bigint for every token amount; private signer remains server-side in ignored `.env`.
+- Server-side legal moves, participant checks, turn checks and revisions.
+- PostgreSQL transactions and one-time rated-result application.
+- Random opaque session tokens stored as hashes, HttpOnly SameSite=Strict cookies, expiry and socket revalidation.
+- Salted scrypt password hashes; minimum 12-character passwords; input limits and authentication rate limits.
+- Exact allowed HTTP/WebSocket origins. The frontend and API are intended to share an origin through a proxy.
+- SIWE nonce consumption, domain/URI/chain/expiry/signature checks and unique wallet ownership.
+- EIP-712 domain separation, per-match nonce, expiry, fixed participants, fixed allowlisted token, exact transfer balance checks, state guards and reentrancy protection.
+- Chain ID restrictions in constructors: only Anvil 31337 and Base Sepolia 84532.
+- Recovery remains available when new funding/results are paused.
+- Frontend uses bigint for every token amount; private signer remains server-side in ignored `.env`.
 
 ## Recovery and authority limits
 

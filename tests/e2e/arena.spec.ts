@@ -60,6 +60,10 @@ test('two wallets fund, play, authorize and settle a real local escrow', async (
   for (const p of [a, b]) {
     await p.goto('/arena');
     await p.getByRole('button', { name: 'Connect wallet' }).click();
+    await p
+      .getByRole('dialog')
+      .getByRole('button', { name: /Browser wallet|MetaMask/i })
+      .click();
     await p.getByRole('button', { name: 'Sign in with Ethereum' }).click();
     await expect(p.getByText('Wallet ownership verified.')).toBeVisible();
     await p.getByRole('button', { name: 'Get free test tokens' }).click();
@@ -111,8 +115,7 @@ test('two wallets fund, play, authorize and settle a real local escrow', async (
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'evm_mine', params: [] }),
   });
-  await a.clock.install();
-  await a.clock.fastForward(122000);
+  await a.reload();
   await expect(a.getByRole('button', { name: 'Settle verified result' })).toBeEnabled();
   await a.getByRole('button', { name: 'Settle verified result' }).click();
   await expect(a.getByText('Settled: white receives the pot.')).toBeVisible();
