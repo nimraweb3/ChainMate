@@ -24,13 +24,25 @@ export async function createApp(db: Database) {
   });
   const games = new Games(db);
   app.use(helmet(), express.json({ limit: '16kb' }), cookieParser());
-  app.use('/api', rateLimit({ windowMs: 60000, limit: 180 }));
+  app.use(
+    '/api',
+    rateLimit({
+      windowMs: 60000,
+      limit: 180,
+      message: { error: 'Too many requests. Please wait a minute and try again.' },
+    }),
+  );
   app.use((req, res, next) => {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !origins.has(req.headers.origin || ''))
       return res.status(403).json({ error: 'Invalid request origin.' });
     next();
   });
-  const authLimit = rateLimit({ windowMs: 15 * 60000, limit: 40 });
+  const authLimit = rateLimit({
+    windowMs: 15 * 60000,
+    limit: 40,
+    skip: (req) => req.method === 'GET' && req.path === '/me',
+    message: { error: 'Too many sign-in attempts. Please try again in 15 minutes.' },
+  });
   app.use('/api/auth', authLimit);
   const setCookie = (res: express.Response, t: string) =>
     res.cookie('cm_session', t, {
@@ -194,16 +206,14 @@ export async function createApp(db: Database) {
   });
   app.use(
     (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      res
-        .status(400)
-        .json({
-          error:
-            err instanceof z.ZodError
-              ? 'Please check the supplied fields.'
-              : err instanceof Error
-                ? err.message
-                : 'Request failed.',
-        });
+      res.status(400).json({
+        error:
+          err instanceof z.ZodError
+            ? 'Please check the supplied fields.'
+            : err instanceof Error
+              ? err.message
+              : 'Request failed.',
+      });
     },
   );
   const queue = new Map<
