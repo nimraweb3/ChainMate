@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   useAccount,
   useConnect,
@@ -15,6 +15,7 @@ import { escrowAbi, tokenAbi } from '../../../../packages/shared/contracts';
 import { api, useAuth, useResource } from '../lib';
 type Config = { configured: boolean; chainId: number; address: Address; token: Address };
 type Match = {
+  chainTimestamp: number;
   id: Hex;
   white: Address;
   black: Address;
@@ -39,6 +40,11 @@ export default function Arena() {
     { data: wallet } = useWalletClient(),
     client = usePublicClient();
   const { data: config, error: configError } = useResource<Config>('/web3/config');
+  const [searchParams] = useSearchParams();
+  const walletDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (searchParams.has('connect') && !isConnected) walletDialog.current?.showModal();
+  }, [isConnected, searchParams]);
   const [match, setMatch] = useState<Match>(),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -134,6 +140,46 @@ export default function Arena() {
   ];
   return (
     <div className="page arena-page">
+      <dialog ref={walletDialog} className="wallet-dialog" aria-labelledby="wallet-title">
+        <button
+          className="wallet-close"
+          aria-label="Close wallet dialog"
+          onClick={() => walletDialog.current?.close()}
+        >
+          ×
+        </button>
+        <Wallet size={30} />
+        <div className="eyebrow">YOUR SEAT AT THE TABLE</div>
+        <h2 id="wallet-title">Connect your wallet.</h2>
+        <p>
+          Choose your installed Ethereum wallet. Connecting shares your public address; it does not
+          authorize a transfer.
+        </p>
+        {connectors.map((connector) => (
+          <button
+            className="button"
+            disabled={busy}
+            key={connector.uid}
+            onClick={() =>
+              run(async () => {
+                await connectAsync({ connector });
+                walletDialog.current?.close();
+              })
+            }
+          >
+            {connector.name === 'Injected' ? 'Browser wallet' : connector.name}
+          </button>
+        ))}
+        {!connectors.length && (
+          <p>No compatible wallet detected. Install an Ethereum wallet, then refresh.</p>
+        )}
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        <small>Test networks only · Ordinary chess needs no wallet.</small>
+      </dialog>
       <div className="arena-heading">
         <div>
           <div className="eyebrow">
@@ -183,12 +229,7 @@ export default function Arena() {
               <button
                 className="button"
                 disabled={busy}
-                onClick={() =>
-                  run(async () => {
-                    if (!connectors[0]) throw Error('Install an injected EVM wallet to continue.');
-                    await connectAsync({ connector: connectors[0] });
-                  })
-                }
+                onClick={() => walletDialog.current?.showModal()}
               >
                 Connect wallet
               </button>
@@ -325,7 +366,7 @@ export default function Arena() {
                     {new Date(match.disputeDeadline * 1000).toLocaleTimeString()}.
                   </p>
                   <button
-                    disabled={busy || Date.now() < match.disputeDeadline * 1000}
+                    disabled={busy || match.chainTimestamp < match.disputeDeadline}
                     onClick={() =>
                       run(() => write(config!.address, escrowAbi, 'settle', [match.id]))
                     }
@@ -333,7 +374,7 @@ export default function Arena() {
                     Settle verified result
                   </button>
                   <button
-                    disabled={busy || Date.now() >= match.disputeDeadline * 1000}
+                    disabled={busy || match.chainTimestamp >= match.disputeDeadline}
                     onClick={() =>
                       run(async () => {
                         const { keccak256, toBytes } = await import('viem');
@@ -352,8 +393,8 @@ export default function Arena() {
                 <button
                   disabled={
                     busy ||
-                    Date.now() <
-                      (match.state === 1 ? match.fundingDeadline : match.recoveryDeadline) * 1000
+                    match.chainTimestamp <
+                      (match.state === 1 ? match.fundingDeadline : match.recoveryDeadline)
                   }
                   onClick={() =>
                     run(() => write(config!.address, escrowAbi, 'recover', [match.id]))

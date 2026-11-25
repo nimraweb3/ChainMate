@@ -10,7 +10,11 @@ export default function Play() {
     navigate = useNavigate(),
     { user } = useAuth();
   const [bot, setBot] = useState(params.get('bot') || 'bitcoin'),
-    [control, setControl] = useState<Control>('10+0'),
+    [control, setControl] = useState<Control>(
+      params.get('control') && params.get('control')! in controls
+        ? (params.get('control') as Control)
+        : '10+0',
+    ),
     [rated, setRated] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -34,8 +38,12 @@ export default function Play() {
     setBusy(true);
     try {
       if (mode === 'friend') {
+        const invitation = new URL(code || '/', location.origin);
+        const challengeId =
+          invitation.searchParams.get('invite') ||
+          invitation.pathname.split('/').filter(Boolean).pop();
         const g = code
-          ? await api('/challenges/' + code.split('/').pop() + '/join', {})
+          ? await api('/challenges/' + encodeURIComponent(challengeId || '') + '/join', {})
           : await api('/challenges', { control, rated });
         navigate('/game/' + g.id);
       } else if (mode === 'online') {
@@ -133,9 +141,12 @@ export default function Play() {
               key={b.id}
             >
               <div className={'bot-art bot-art-' + i}>
-                <span>{b.symbol}</span>
-                <i />
-                <i />
+                <img
+                  src={'/art/' + b.id + '.webp'}
+                  alt={`${b.name} chess sculpture`}
+                  width="591"
+                  height="887"
+                />
               </div>
               <div className="bot-card-info">
                 <span className="difficulty">{b.difficulty}</span>

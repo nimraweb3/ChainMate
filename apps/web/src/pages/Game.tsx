@@ -304,7 +304,12 @@ export default function Game({ replay = false }: { replay?: boolean }) {
       <div className="game-layout">
         <section className="board-column">
           <div className="player-bar">
-            <span className="avatar bot-avatar">{local ? bot.symbol : '♚'}</span>
+            <span
+              className={local ? 'avatar bot-avatar' : 'avatar'}
+              data-bot={local ? bot.id : undefined}
+            >
+              {local ? bot.symbol : '♚'}
+            </span>
             <div>
               <strong>
                 {flipped
@@ -393,7 +398,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
                 localStorage.setItem('cm-board', warm ? 'green' : 'warm');
               }}
             >
-              Board: {warm ? 'Walnut' : 'Sage'}
+              Board: {warm ? 'Walnut' : 'Slate'}
             </button>
           </div>
         </section>
