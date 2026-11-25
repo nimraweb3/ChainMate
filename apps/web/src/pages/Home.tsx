@@ -1,228 +1,420 @@
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ShieldCheck,
-  Globe2,
-  MoveUpRight,
+  ArrowUpRight,
+  ArrowRight,
   ChevronDown,
-  Mouse,
-  Users,
-  Layers3,
-  Flame,
+  MoveUpRight,
+  ShieldCheck,
+  MousePointer2,
 } from 'lucide-react';
-import World from '../components/World';
-import { bots } from '../../../../packages/shared/types';
-export default function Home() {
+import { bots, type User } from '../../../../packages/shared/types';
+import { useResource } from '../lib';
+const PreviewBoard = lazy(() => import('../components/PreviewBoard'));
+const modes = [
+  {
+    title: 'Blitz',
+    value: '3 + 2',
+    caption: 'A little less time. A little more instinct.',
+    href: '/play/online?control=3%2B2',
+  },
+  {
+    title: 'Rapid',
+    value: '10 + 0',
+    caption: 'Take a breath. Find your next move.',
+    href: '/play/online?control=10%2B0',
+  },
+  {
+    title: 'Play a bot',
+    value: 'Your pace.',
+    caption: 'Three minds. A challenge at every level.',
+    href: '/play/bot',
+  },
+  {
+    title: 'Web3 Arena',
+    value: 'On-chain.',
+    caption: 'A new way to compete. Testnet only.',
+    href: '/arena',
+  },
+];
+function Preview() {
+  const ref = useRef<HTMLDivElement>(null),
+    [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '250px' },
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
   return (
-    <>
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="eyebrow">
-            <span /> THE NEXT MOVE IS YOURS
-          </div>
+    <div className="live-preview" ref={ref}>
+      {visible ? (
+        <Suspense fallback={<div className="preview-loading">Preparing the board…</div>}>
+          <PreviewBoard />
+        </Suspense>
+      ) : (
+        <div className="preview-loading">Your next move is waiting.</div>
+      )}
+    </div>
+  );
+}
+export default function Home() {
+  const hero = useRef<HTMLElement>(null);
+  const { data: players, error } = useResource<User[]>('/leaderboard');
+  useEffect(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const p = Math.min(1, window.scrollY / 900);
+        hero.current?.style.setProperty('--camera', `${p * 28}px`);
+      });
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', update);
+    };
+  }, []);
+  return (
+    <div className="studio-home">
+      <section className="cinema" ref={hero}>
+        <picture className="cinema-art">
+          <source media="(max-width: 600px)" srcSet="/art/hero-mobile.webp" />
+          <img
+            src="/art/hero-knight.webp"
+            alt="Monumental black-chrome knight with a pearl bishop, lit by silver and subtle copper reflections"
+            width="1672"
+            height="941"
+            fetchPriority="high"
+          />
+        </picture>
+        <div className="cinema-shade" />
+        <div className="cinema-topline">
+          <span>THE ART OF THE NEXT MOVE</span>
+          <span>CHESS. RECONSIDERED.</span>
+        </div>
+        <div className="cinema-copy">
           <h1>
-            Every move
+            EVERY MOVE
             <br />
-            <em>matters.</em>
+            <span>MATTERS.</span>
           </h1>
-          <p>
-            A timeless game. A new way to play.
-            <br />
-            Challenge minds. Find your rivals.
-            <br />
-            Take your victories on-chain.
-          </p>
-          <div className="hero-actions">
-            <Link className="button" to="/play">
-              Play chess <span>♞</span>
-            </Link>
-            <Link className="text-link" to="/arena">
-              Explore the Arena
-            </Link>
-          </div>
-          <div className="hero-fine">
-            <ShieldCheck size={15} /> Free to play. No wallet required.
-          </div>
-        </div>
-        <World />
-        <div className="hero-bottom">
-          <span>STRATEGY MEETS POSSIBILITY</span>
-          <a href="#rivals">
-            <Mouse size={16} /> Scroll to explore <ChevronDown size={15} />
-          </a>
-          <span className="hero-coordinate">64 SQUARES. YOUR NEXT CHAPTER.</span>
-        </div>
-      </section>
-      <div className="value-strip">
-        <span>
-          <Globe2 /> A game without borders
-        </span>
-        <span>
-          <Users /> Real rivals. Real connections.
-        </span>
-        <span>
-          <Layers3 /> Your game, verified.
-        </span>
-      </div>
-      <section className="section rivals" id="rivals">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">THE HUMAN SIDE OF CHESS</div>
-            <h2>
-              Find your
-              <br />
-              <em>next rival.</em>
-            </h2>
-          </div>
-          <p>
-            Across the table or across the world.
-            <br />
-            There’s nothing quite like a real opponent.
-          </p>
-        </div>
-        <div className="play-paths">
-          <Link className="path path-primary" to="/play/online">
-            <span className="path-icon">
-              <Globe2 size={28} />
-            </span>
-            <span className="path-kicker">MEET YOUR MATCH</span>
-            <h3>
-              The world is
-              <br />
-              your chess club.
-            </h3>
+          <div className="cinema-intro">
+            <span className="fine-cross">+</span>
             <p>
-              Find an opponent. Make your opening.
+              Your next rival is one move away.
               <br />
-              Play a game worth remembering.
+              Play the game. Own the moment.
             </p>
-            <span className="path-action">
-              Play online <MoveUpRight size={20} />
-            </span>
-            <div className="line-globe" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </div>
-          </Link>
-          <Link className="path" to="/play/friend">
-            <span className="path-icon">
-              <Users size={28} />
-            </span>
-            <span className="path-kicker">A FRIENDLY CHALLENGE</span>
-            <h3>
-              Settle it
-              <br />
-              on the board.
-            </h3>
-            <p>
-              Your friend. Your time control.
-              <br />A private table, just for two.
-            </p>
-            <span className="path-action">
-              Invite a friend <MoveUpRight size={20} />
-            </span>
-            <span className="giant-knights" aria-hidden="true">
-              ♞♘
-            </span>
-          </Link>
-        </div>
-      </section>
-      <section className="section bot-section">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">THREE MINDS. THREE CHALLENGES.</div>
-            <h2>
-              Meet your <em>match.</em>
-            </h2>
           </div>
-          <Link className="text-link" to="/play/bot">
-            Explore the bots
-          </Link>
+          <div className="cinema-actions">
+            <Link to="/play" className="button">
+              Play Now <ArrowUpRight size={21} />
+            </Link>
+            <Link to="/arena" className="quiet-link">
+              Explore the Arena <ArrowUpRight size={15} />
+            </Link>
+          </div>
+          <p className="cinema-note">Free to play. No wallet required.</p>
         </div>
-        <div className="bot-row">
-          {bots.map((b, i) => (
-            <Link className="bot-card" to={'/play/bot?bot=' + b.id} key={b.id}>
-              <div className={'bot-art bot-art-' + i}>
-                <span>{b.symbol}</span>
-                <i />
-                <i />
+        <div className="art-annotation">
+          <span>KNIGHT / BLACK CHROME</span>
+          <i />
+          <span>Tradition, in a different light.</span>
+        </div>
+        <div className="mode-dock">
+          {modes.map((m) => (
+            <Link key={m.title} to={m.href}>
+              <div>
+                <span>{m.title}</span>
+                <ArrowUpRight size={17} />
               </div>
-              <div className="bot-card-info">
-                <span className="difficulty">{b.difficulty}</span>
-                <h3>
-                  {b.name}
-                  <span> / {b.title}</span>
-                </h3>
+              <strong>{m.value}</strong>
+              <p>{m.caption}</p>
+            </Link>
+          ))}
+        </div>
+        <a href="#begin" className="cinema-scroll">
+          SCROLL TO MAKE YOUR MOVE <ChevronDown size={15} />
+        </a>
+      </section>
+      <section className="editorial-section beginning" id="begin">
+        <div className="section-meta">
+          <span>THE GAME BEGINS</span>
+          <span>ONE BOARD. EVERY POSSIBILITY.</span>
+        </div>
+        <div className="begin-layout">
+          <h2>
+            A seat for
+            <br />
+            <span>every mind.</span>
+          </h2>
+          <div className="editorial-menu">
+            {[
+              {
+                name: 'Play the world',
+                copy: 'Find your next rival. Casual or rated.',
+                to: '/play/online',
+              },
+              {
+                name: 'Challenge a friend',
+                copy: 'Your own table. A link to share.',
+                to: '/play/friend',
+              },
+              {
+                name: 'Meet the machines',
+                copy: 'Three distinct minds. Always ready.',
+                to: '/play/bot',
+              },
+              {
+                name: 'Enter the Arena',
+                copy: 'Test-token matches. Verifiable results.',
+                to: '/arena',
+              },
+            ].map((m) => (
+              <Link to={m.to} key={m.name}>
+                <div>
+                  <h3>{m.name}</h3>
+                  <p>{m.copy}</p>
+                </div>
+                <ArrowUpRight />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="gallery-section">
+        <div className="gallery-caption">
+          <span>THE CHAINMATE COLLECTION</span>
+          <span>FORM FOLLOWS STRATEGY</span>
+        </div>
+        <picture>
+          <source media="(max-width:600px)" srcSet="/art/gallery-small.webp" />
+          <img
+            src="/art/gallery.webp"
+            alt="Copper, cobalt, pearl, and black-chrome chess sculptures on a brushed silver chessboard"
+            loading="lazy"
+            width="1672"
+            height="941"
+          />
+        </picture>
+        <div className="gallery-editorial">
+          <h2>
+            Strategy has
+            <br />a new form.
+          </h2>
+          <div>
+            <span className="dark-label">A TIMELESS GAME. A NEW PERSPECTIVE.</span>
+            <p>
+              Sixty-four squares. Infinite possibility.
+              <br />
+              Built for a generation that plays its own way.
+            </p>
+            <Link className="gallery-link" to="/play">
+              Find your game <ArrowUpRight size={20} />
+            </Link>
+          </div>
+        </div>
+      </section>
+      <section className="editorial-section real-game">
+        <div className="real-game-copy">
+          <span className="section-label">BEAUTIFUL IS ONLY THE BEGINNING</span>
+          <h2>
+            Made for
+            <br />
+            the next <span>move.</span>
+          </h2>
+          <p>
+            No waiting room. No wallet.
+            <br />
+            Just you, the board, and what comes next.
+          </p>
+          <div className="preview-instructions">
+            <MousePointer2 size={17} />
+            <span>
+              Try the board. Tap a piece, then a square.
+              <br />
+              Both sides are yours in this preview.
+            </span>
+          </div>
+          <Link className="button" to="/play/bot">
+            Play a full game <ArrowUpRight size={19} />
+          </Link>
+          <div className="game-specs">
+            <span>LEGAL MOVES</span>
+            <span>REAL STOCKFISH</span>
+            <span>YOUR PACE</span>
+          </div>
+        </div>
+        <Preview />
+      </section>
+      <section className="chain-section">
+        <div className="chain-art">
+          <img
+            src="/art/ethereum.webp"
+            alt="Reflective platinum bishop"
+            loading="lazy"
+            width="591"
+            height="887"
+          />
+          <div className="chain-art-label">
+            <ShieldCheck size={18} /> VERIFIED, MOVE BY MOVE.
+          </div>
+        </div>
+        <div className="chain-copy">
+          <div className="section-label">
+            THE ON-CHAIN ARENA <span className="pill">TESTNET</span>
+          </div>
+          <h2>
+            Your game.
+            <br />
+            <span>On-chain.</span>
+          </h2>
+          <p>
+            Same beautiful game. A transparent finish.
+            <br />
+            Compete with test-token escrow and inspect every settlement.
+          </p>
+          <ol className="escrow-steps">
+            {[
+              'Two players. Equal deposits.',
+              'One match. Server-verified result.',
+              'Clear settlement. A lasting record.',
+            ].map((s, i) => (
+              <li key={s}>
+                <span>{String(i + 1).padStart(2, '0')}</span>
+                {s}
+              </li>
+            ))}
+          </ol>
+          <Link className="button outline" to="/arena">
+            Explore the Arena <ArrowUpRight size={19} />
+          </Link>
+          <p className="chain-disclosure">
+            Non-redeemable test tokens. Trusted result verification.
+            <br />
+            Escrow does not independently prevent chess cheating.
+          </p>
+        </div>
+      </section>
+      <section className="editorial-section opponents-section">
+        <div className="opponents-heading">
+          <div>
+            <span className="section-label">DIFFERENT MINDS. DIFFERENT GAMES.</span>
+            <h2>
+              Know your
+              <br />
+              <span>opponent.</span>
+            </h2>
+          </div>
+          <p>
+            From your first opening
+            <br />
+            to your next obsession.
+          </p>
+        </div>
+        <div className="sculpture-bots">
+          {bots.map((b) => (
+            <Link className="sculpture-bot" key={b.id} to={'/play/bot?bot=' + b.id}>
+              <div className="sculpture-bot-image">
+                <img
+                  src={'/art/' + b.id + '.webp'}
+                  alt={`${b.name}: ${b.id === 'bitcoin' ? 'a copper rook' : b.id === 'ethereum' ? 'a platinum bishop' : 'a titanium knight'}`}
+                  width="591"
+                  height="887"
+                  loading="lazy"
+                />
+                <span className="bot-level">{b.difficulty}</span>
+              </div>
+              <div className="sculpture-bot-copy">
+                <div>
+                  <h3>{b.name}</h3>
+                  <span>{b.title}</span>
+                </div>
+                <ArrowUpRight size={23} />
                 <p>{b.description}</p>
               </div>
             </Link>
           ))}
         </div>
-        <p className="section-footnote">
-          Powered by Stockfish. Distinct skill settings. No invented Elo ratings.
+        <p className="engine-credit">
+          Powered by Stockfish. Real engine settings, no invented ratings.
         </p>
       </section>
-      <section className="arena-story section" id="arena-story">
-        <div className="vault-art" aria-hidden="true">
-          <div className="vault-ring" />
-          <div className="vault-ring second" />
-          <div className="vault-cube">
-            <ShieldCheck size={66} />
-          </div>
-          <div className="vault-tag">CHESS × SMART CONTRACTS</div>
-          <span className="vault-orbit orbit-a">♔</span>
-          <span className="vault-orbit orbit-b">◇</span>
-        </div>
-        <div className="arena-story-copy">
-          <div className="eyebrow">
-            WELCOME TO THE WEB3 ARENA <span className="pill">TESTNET</span>
-          </div>
+      <section className="club-section editorial-section">
+        <div>
+          <span className="section-label">THE CLUB IS WHAT WE MAKE IT</span>
           <h2>
-            A new way
+            Earn your
             <br />
-            <em>to compete.</em>
+            <span>place.</span>
           </h2>
-          <p>
-            Same beautiful game. A verifiable finish.
-            <br />
-            Explore matches backed by transparent, test-token escrow.
-          </p>
-          <ul className="feature-lines">
-            <li>
-              <ShieldCheck /> Equal deposits. Clear rules.
-            </li>
-            <li>
-              <Layers3 /> Verified results. Visible settlement.
-            </li>
-            <li>
-              <Flame /> Play for the experience. Tokens have no value.
-            </li>
-          </ul>
-          <Link className="button outline" to="/arena">
-            Enter the Arena
+          <Link to="/leaderboard" className="quiet-link">
+            Explore the leaderboard <ArrowUpRight size={17} />
           </Link>
-          <small>Testnet only. Trusted result verification. No real-money stakes.</small>
+        </div>
+        <div className="club-board">
+          <div className="club-board-heading">
+            <span>CLUB STANDINGS</span>
+            <span>RATING</span>
+          </div>
+          {error ? (
+            <p>Standings are unavailable right now. Please try again shortly.</p>
+          ) : !players ? (
+            <p>Loading the club…</p>
+          ) : players.length ? (
+            players.slice(0, 4).map((p, i) => (
+              <Link to={'/profile/' + p.username} key={p.id}>
+                <span>{String(i + 1).padStart(2, '0')}</span>
+                <strong>{p.username}</strong>
+                <b>{p.rating}</b>
+                <MoveUpRight size={16} />
+              </Link>
+            ))
+          ) : (
+            <div className="club-empty">
+              <span>THE FIRST CHAPTER IS YOURS.</span>
+              <p>
+                No rated games yet.
+                <br />
+                Be part of the opening move.
+              </p>
+              <Link to="/play/online">
+                Play a rated match <ArrowRight size={17} />
+              </Link>
+            </div>
+          )}
+          <div className="club-event">
+            <span>TOURNAMENTS</span>
+            <p>In the making. Registration isn’t open yet.</p>
+            <Link to="/tournaments">
+              Details <ArrowUpRight size={15} />
+            </Link>
+          </div>
         </div>
       </section>
-      <section className="identity section">
-        <div className="eyebrow">YOUR STORY, ONE MOVE AT A TIME</div>
+      <section className="final-move">
+        <div className="final-line">
+          <span>THE POSSIBILITIES ARE ENDLESS.</span>
+          <span>THE NEXT ONE IS YOURS.</span>
+        </div>
         <h2>
-          Make your
-          <br />
-          moves <em>count.</em>
+          Your move<span>.</span>
         </h2>
-        <p>
-          Build your rating. Revisit your games.
-          <br />
-          Become the player you want to be.
-        </p>
-        <Link to="/register" className="button">
-          Find your place at the table
+        <Link className="button" to="/play">
+          Start Playing <ArrowUpRight size={23} />
         </Link>
-        <div className="identity-piece" aria-hidden="true">
-          ♔
-        </div>
+        <span className="final-signature">CHAINMATE — THE ART OF THE NEXT MOVE</span>
       </section>
-    </>
+    </div>
   );
 }
