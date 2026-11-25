@@ -356,6 +356,47 @@ export default function Account() {
         <Link to="/achievements">Achievements</Link>
         <Link to="/settings">Settings</Link>
       </div>
+      {Array.isArray(games) && profile && (
+        <div className="player-stat-strip" aria-label="Results in recent match history">
+          <div>
+            <span>RECENT GAMES</span>
+            <strong>{games.filter((g) => g.status === 'finished').length}</strong>
+          </div>
+          <div>
+            <span>WINS</span>
+            <strong>
+              {
+                games.filter(
+                  (g) =>
+                    g.status === 'finished' &&
+                    ((g.white === profile.id && g.outcome === 'white') ||
+                      (g.black === profile.id && g.outcome === 'black')),
+                ).length
+              }
+            </strong>
+          </div>
+          <div>
+            <span>LOSSES</span>
+            <strong>
+              {
+                games.filter(
+                  (g) =>
+                    g.status === 'finished' &&
+                    g.outcome !== 'draw' &&
+                    ((g.white === profile.id && g.outcome === 'black') ||
+                      (g.black === profile.id && g.outcome === 'white')),
+                ).length
+              }
+            </strong>
+          </div>
+          <div>
+            <span>DRAWS</span>
+            <strong>
+              {games.filter((g) => g.status === 'finished' && g.outcome === 'draw').length}
+            </strong>
+          </div>
+        </div>
+      )}
       {resource.error ? (
         <p className="error">{resource.error}</p>
       ) : !resource.data ? (

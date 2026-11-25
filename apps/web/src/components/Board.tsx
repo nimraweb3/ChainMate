@@ -62,8 +62,8 @@ export default function Board({
           options={{
             position: chess.fen(),
             boardOrientation: flipped ? 'black' : 'white',
-            darkSquareStyle: { backgroundColor: warm ? '#9b7653' : '#628275' },
-            lightSquareStyle: { backgroundColor: '#e5ddc9' },
+            darkSquareStyle: { backgroundColor: warm ? '#937c6a' : '#647987' },
+            lightSquareStyle: { backgroundColor: '#deded7' },
             squareStyles: styles,
             allowDragging: !disabled,
             allowAutoScroll: false,

@@ -1,14 +1,15 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { Moon, Sun, Menu, X, Hexagon } from 'lucide-react';
+import { Moon, Sun, Menu, X, Wallet } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider, createConfig, http } from 'wagmi';
+import { WagmiProvider, createConfig, http, useAccount } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { anvil, baseSepolia } from 'wagmi/chains';
 import { AuthProvider, useAuth } from './lib';
 import Home from './pages/Home';
 import './style.css';
+import './redesign.css';
 const Play = lazy(() => import('./pages/Play'));
 const Game = lazy(() => import('./pages/Game'));
 const Account = lazy(() => import('./pages/Account'));
@@ -24,6 +25,7 @@ const config = createConfig({
 const query = new QueryClient();
 function Shell() {
   const { user } = useAuth();
+  const { address, isConnected } = useAccount();
   const [light, setLight] = useState(localStorage.getItem('cm-theme') === 'light');
   const [menu, setMenu] = useState(false);
   const location = useLocation();
@@ -35,6 +37,17 @@ function Shell() {
     setMenu(false);
     window.scrollTo(0, 0);
   }, [location.pathname]);
+  React.useEffect(() => {
+    if (!menu) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenu(false);
+        document.querySelector<HTMLButtonElement>('.menu-button')?.focus();
+      }
+    };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [menu]);
   return (
     <>
       <a className="skip" href="#main">
@@ -43,17 +56,30 @@ function Shell() {
       <header className="site-header">
         <Link to="/" className="brand">
           <span className="brand-mark">
-            <Hexagon size={30} />
-            <span>♞</span>
+            <svg viewBox="0 0 28 34" fill="none" aria-hidden="true">
+              <path
+                d="M6 28h17v4H4v-4h2Zm1-3 3-8-5 2-3-4 7-8 3-5 7 5 5 9-2 9H7Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+              <path d="m13 7 4 3m-8 4 2-1m6 2-3 10" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
           </span>
           ChainMate<span className="brand-period">.</span>
         </Link>
-        <nav className={menu ? 'open' : ''} aria-label="Main navigation">
-          <NavLink to="/play">Play chess</NavLink>
+        <nav id="main-navigation" className={menu ? 'open' : ''} aria-label="Main navigation">
+          <NavLink to="/play">Play</NavLink>
           <NavLink to="/arena">
-            Web3 Arena <span className="nav-tag">TESTNET</span>
+            Arena <span className="nav-tag">TESTNET</span>
           </NavLink>
-          <NavLink to="/leaderboard">The club</NavLink>
+          <NavLink to="/tournaments">Tournaments</NavLink>
+          <NavLink to="/leaderboard">Leaderboard</NavLink>
+          <Link className="mobile-wallet-entry" to="/arena?connect=1">
+            {isConnected
+              ? `Wallet ${address?.slice(0, 6)}…${address?.slice(-4)}`
+              : 'Connect Wallet'}
+          </Link>
         </nav>
         <div className="header-actions">
           <button
@@ -66,13 +92,15 @@ function Shell() {
           <Link className="login-link" to={user ? '/dashboard' : '/login'}>
             {user ? user.username : 'Sign in'}
           </Link>
-          <Link className="button small" to="/play">
-            Let’s play
+          <Link className="wallet-entry" to="/arena?connect=1">
+            <Wallet size={15} />
+            {isConnected ? `${address?.slice(0, 6)}…${address?.slice(-4)}` : 'Connect Wallet'}
           </Link>
           <button
             className="icon-button menu-button"
             aria-label="Toggle navigation"
             aria-expanded={menu}
+            aria-controls="main-navigation"
             onClick={() => setMenu(!menu)}
           >
             {menu ? <X /> : <Menu />}
