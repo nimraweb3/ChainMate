@@ -4,8 +4,8 @@ import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-
 import { Moon, Sun, Menu, X, Wallet } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http, useAccount } from 'wagmi';
-import { injected } from 'wagmi/connectors';
-import { anvil, baseSepolia } from 'wagmi/chains';
+import { injected, walletConnect } from 'wagmi/connectors';
+import { anvil, baseSepolia, base } from 'wagmi/chains';
 import { AuthProvider, useAuth } from './lib';
 import Home from './pages/Home';
 import './style.css';
@@ -14,12 +14,25 @@ const Play = lazy(() => import('./pages/Play'));
 const Game = lazy(() => import('./pages/Game'));
 const Account = lazy(() => import('./pages/Account'));
 const Arena = lazy(() => import('./pages/Arena'));
+const Settings = lazy(() => import('./pages/Settings'));
+const WalletPage = lazy(() => import('./pages/Wallet'));
 const config = createConfig({
-  chains: [anvil, baseSepolia],
-  connectors: [injected()],
+  chains: [anvil, baseSepolia, base],
+  connectors: [
+    injected(),
+    ...(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID
+      ? [
+          walletConnect({
+            projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
+            showQrModal: true,
+          }),
+        ]
+      : []),
+  ],
   transports: {
     [anvil.id]: http('http://127.0.0.1:8545'),
-    [baseSepolia.id]: http('https://sepolia.base.org'),
+    [baseSepolia.id]: http(import.meta.env.VITE_BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org'),
+    [base.id]: http(import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org'),
   },
 });
 const query = new QueryClient();
@@ -122,7 +135,6 @@ function Shell() {
               '/register',
               '/dashboard',
               '/profile/:username',
-              '/settings',
               '/history',
               '/achievements',
               '/leaderboard',
@@ -130,6 +142,8 @@ function Shell() {
             ].map((p) => (
               <Route key={p} path={p} element={<Account />} />
             ))}
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/wallet" element={<WalletPage />} />
             <Route
               path="*"
               element={

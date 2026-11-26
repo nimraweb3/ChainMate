@@ -14,10 +14,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm assets
       - run: pnpm lint
+      - run: pnpm exec prettier --check apps/worker/src apps/web/src/components/ChessPieces.tsx apps/web/src/realtime.ts apps/web/src/pages/Settings.tsx apps/web/src/pages/Wallet.tsx
       - run: pnpm build
+      - run: pnpm typecheck:worker
       - run: pnpm test
       - run: pnpm contracts:test
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm dev > /tmp/chainmate.log 2>&1 &
-      - run: node scripts/wait-server.mjs
-      - run: pnpm test:e2e
+      - run: pnpm chain > /tmp/anvil.log 2>&1 &
+      - run: node scripts/wait-http.mjs http://127.0.0.1:8545
+      - run: pnpm contracts:deploy
+      - run: pnpm db:local
+      - run: pnpm build:worker
+      - run: pnpm dev:cloudflare > /tmp/chainmate-worker.log 2>&1 &
+      - run: node scripts/wait-http.mjs
+      - run: pnpm test:cloudflare

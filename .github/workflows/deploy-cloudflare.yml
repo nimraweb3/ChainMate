@@ -1,0 +1,48 @@
+name: Deploy reviewed Cloudflare build
+on:
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm assets
+      - run: pnpm lint
+      - run: pnpm typecheck:worker
+      - run: pnpm test
+      - run: pnpm contracts:test
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm chain > /tmp/anvil.log 2>&1 &
+      - run: node scripts/wait-http.mjs http://127.0.0.1:8545
+      - run: pnpm contracts:deploy
+      - run: pnpm db:local
+      - run: pnpm dev:cloudflare > /tmp/chainmate-worker.log 2>&1 &
+        env:
+          CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'true'
+      - run: node scripts/wait-http.mjs
+      - run: pnpm test:cloudflare
+      - name: Require provisioned configuration
+        env:
+          DEPLOY_CONFIG: ${{ vars.CLOUDFLARE_PRODUCTION_CONFIG }}
+        run: node --input-type=module -e 'import {writeFileSync} from "node:fs"; if(!process.env.CLOUDFLARE_API_TOKEN || !process.env.DEPLOY_CONFIG) throw Error("Missing deployment configuration"); const c=JSON.parse(process.env.DEPLOY_CONFIG); writeFileSync("wrangler.production.json",JSON.stringify(c));'
+      - run: pnpm exec wrangler deploy --dry-run --config wrangler.production.json
+      - run: pnpm deploy:cloudflare
+      - name: Verify configured live health URL
+        env:
+          LIVE_ORIGIN: ${{ vars.CLOUDFLARE_LIVE_ORIGIN }}
+        run: node --input-type=module -e 'const u=process.env.LIVE_ORIGIN; if(!u?.startsWith("https://")) throw Error("Configure the actual deployed origin"); const r=await fetch(u+"/api/health"); const j=await r.json(); if(!r.ok || j.storage!=="D1" || j.realtime!=="durable-objects") throw Error("Live health verification failed");'
