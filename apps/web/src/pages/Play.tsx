@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { realtime, type Realtime } from '../realtime';
 import { Globe2, Users, BrainCircuit, Clock3 } from 'lucide-react';
-import { bots, controls, type Control } from '../../../../packages/shared/types';
+import { bots, controls, controlValues, type Control } from '../../../../packages/shared/types';
 import { api, useAuth } from '../lib';
 export default function Play() {
   const { mode } = useParams(),
@@ -20,6 +20,9 @@ export default function Play() {
     [busy, setBusy] = useState(false),
     [code, setCode] = useState(params.get('invite') || ''),
     [socket, setSocket] = useState<Realtime>();
+  const [custom, setCustom] = useState(false),
+    [minutes, setMinutes] = useState(10),
+    [increment, setIncrement] = useState(0);
   useEffect(() => {
     if (mode !== 'online' || !user) return;
     const s = realtime('queue');
@@ -41,6 +44,9 @@ export default function Play() {
     setError('');
     setBusy(true);
     try {
+      const selected = custom ? `${minutes}+${increment}` : control;
+      if (!controlValues(selected))
+        throw Error('Choose 1–180 minutes and 0–180 seconds increment.');
       if (mode === 'friend') {
         const invitation = new URL(code || '/', location.origin);
         const challengeId =
@@ -48,17 +54,17 @@ export default function Play() {
           invitation.pathname.split('/').filter(Boolean).pop();
         const g = code
           ? await api('/challenges/' + encodeURIComponent(challengeId || '') + '/join', {})
-          : await api('/challenges', { control, rated });
+          : await api('/challenges', { control: selected, rated });
         navigate('/game/' + g.id);
       } else if (mode === 'online') {
         if (!socket?.connected) throw Error('Connecting to the game server. Please try again.');
-        socket.emit('queue:join', { control, rated }, (r: any) => {
+        socket.emit('queue:join', { control: selected, rated }, (r: any) => {
           if (!r.ok) {
             setError(r.error);
             setBusy(false);
           }
         });
-      } else navigate('/game/bot?bot=' + bot + '&control=' + encodeURIComponent(control));
+      } else navigate('/game/bot?bot=' + bot + '&control=' + encodeURIComponent(selected));
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -75,6 +81,10 @@ export default function Play() {
             <em>Your way.</em>
           </h1>
           <p>A little practice, a friendly rivalry, or your next great match.</p>
+          <div className="studio-preview-actions">
+            <Link to="/settings/board">Customize your board ↗</Link>
+            <Link to="/learn/pieces">Learn the pieces ↗</Link>
+          </div>
         </div>
         <div className="mode-grid">
           {[
@@ -178,7 +188,10 @@ export default function Play() {
                 aria-pressed={control === c}
                 className={control === c ? 'chosen' : ''}
                 key={c}
-                onClick={() => setControl(c as Control)}
+                onClick={() => {
+                  setCustom(false);
+                  setControl(c as Control);
+                }}
               >
                 {c}
                 <small>
@@ -191,6 +204,34 @@ export default function Play() {
               </button>
             ))}
           </div>
+          <label className="check-label">
+            <input type="checkbox" checked={custom} onChange={(e) => setCustom(e.target.checked)} />
+            Custom time control
+          </label>
+          {custom && (
+            <div className="custom-time">
+              <label>
+                Minutes per side
+                <input
+                  type="number"
+                  min="1"
+                  max="180"
+                  value={minutes}
+                  onChange={(e) => setMinutes(+e.target.value)}
+                />
+              </label>
+              <label>
+                Increment in seconds
+                <input
+                  type="number"
+                  min="0"
+                  max="180"
+                  value={increment}
+                  onChange={(e) => setIncrement(+e.target.value)}
+                />
+              </label>
+            </div>
+          )}
         </div>
         {mode !== 'bot' && (
           <label className="check-label">

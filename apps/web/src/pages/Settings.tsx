@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, useAuth, useResource } from '../lib';
+import { useAppearance } from '../appearance';
 function ImageEditor({
   kind,
   onSaved,
@@ -140,6 +141,7 @@ function ImageEditor({
   );
 }
 export default function Settings() {
+  const { appearance, apply } = useAppearance();
   const { user, refresh, loading } = useAuth(),
     [params] = useSearchParams();
   const [status, setStatus] = useState(''),
@@ -177,6 +179,9 @@ export default function Settings() {
         <em>Your terms.</em>
       </h1>
       <p className="muted">Profile, privacy, and the way you play.</p>
+      <Link className="button" to="/settings/board">
+        Open Board Studio →
+      </Link>
       <div className="settings-grid">
         <form
           className="setup-panel"
@@ -206,6 +211,20 @@ export default function Settings() {
               );
               localStorage.setItem('cm-board', settings.board);
               localStorage.setItem('cm-muted', String(settings.muted));
+              if (
+                settings.board !== user.settings?.board ||
+                settings.muted !== user.settings?.muted
+              )
+                await apply({
+                  ...appearance,
+                  ...(settings.board !== user.settings?.board
+                    ? {
+                        boardThemeId: settings.board === 'warm' ? 'walnut' : 'pearl',
+                        customColors: false,
+                      }
+                    : {}),
+                  soundEnabled: !settings.muted,
+                });
               await refresh();
               setStatus('Profile and preferences saved.');
             });

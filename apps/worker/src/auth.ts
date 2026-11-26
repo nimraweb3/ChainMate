@@ -279,6 +279,10 @@ auth.delete('/account', async (c) => {
     q(c.env, 'DELETE FROM wallets WHERE user_id=?', u.id),
     q(c.env, 'DELETE FROM challenges WHERE user_id=?', u.id),
     q(c.env, 'DELETE FROM mail_outbox WHERE user_id=?', u.id),
+    q(c.env, 'DELETE FROM user_experience WHERE user_id=?', u.id),
+    q(c.env, 'DELETE FROM chat_messages WHERE sender_id=?', u.id),
+    q(c.env, 'DELETE FROM chat_permissions WHERE user_id=? OR target_id=?', u.id, u.id),
+    q(c.env, 'DELETE FROM user_blocks WHERE user_id=? OR target_id=?', u.id, u.id),
     q(
       c.env,
       `UPDATE games SET state=json_set(state,'$.whiteName',CASE WHEN white=? THEN 'Deleted player' ELSE json_extract(state,'$.whiteName') END,'$.blackName',CASE WHEN black=? THEN 'Deleted player' ELSE json_extract(state,'$.blackName') END) WHERE white=? OR black=?`,
