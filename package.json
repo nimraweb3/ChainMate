@@ -13,7 +13,13 @@
     "contracts:test": "node scripts/foundry.mjs forge test --root packages/contracts",
     "chain": "node scripts/foundry.mjs anvil --host 127.0.0.1",
     "contracts:deploy": "tsx scripts/deploy.ts",
-    "assets": "node scripts/assets.mjs"
+    "assets": "node scripts/assets.mjs",
+    "dev:cloudflare": "wrangler dev --ip 127.0.0.1 --port 8787",
+    "typecheck:worker": "tsc -p apps/worker/tsconfig.json",
+    "build:worker": "wrangler deploy --dry-run --outdir .local/worker-build",
+    "db:local": "wrangler d1 migrations apply chainmate-local --local",
+    "test:cloudflare": "playwright test --config playwright.cloudflare.config.ts",
+    "deploy:cloudflare": "node scripts/deploy-cloudflare.mjs"
   },
   "engines": {
     "node": ">=24"
@@ -22,6 +28,7 @@
     "@electric-sql/pglite": "^0.6.0",
     "@openzeppelin/contracts": "^5.6.1",
     "@tanstack/react-query": "^5.108.4",
+    "@walletconnect/ethereum-provider": "^2.26.0",
     "chess.js": "^1.4.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^18.0.10",
@@ -29,8 +36,10 @@
     "express-rate-limit": "^8.7.5",
     "helmet": "^8.3.0",
     "hono": "^4.13.21",
+    "jpeg-js": "^0.4.4",
     "lucide-react": "^1.78.0",
     "pg": "^8.23.1",
+    "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
     "react-chessboard": "^5.12.4",
     "react-dom": "^19.3.1",

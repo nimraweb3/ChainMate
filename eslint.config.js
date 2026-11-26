@@ -9,6 +9,7 @@ export default tseslint.config(
       'packages/contracts/cache/**',
       '.data/**',
       '.local/**',
+      '.wrangler/**',
       'test-results/**',
     ],
   },
