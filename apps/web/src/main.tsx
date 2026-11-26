@@ -7,6 +7,8 @@ import { WagmiProvider, createConfig, http, useAccount } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { anvil, baseSepolia, base } from 'wagmi/chains';
 import { AuthProvider, useAuth } from './lib';
+import {AppearanceProvider} from './appearance';
+import './experience.css';
 import Home from './pages/Home';
 import './style.css';
 import './redesign.css';
@@ -15,6 +17,8 @@ const Game = lazy(() => import('./pages/Game'));
 const Account = lazy(() => import('./pages/Account'));
 const Arena = lazy(() => import('./pages/Arena'));
 const Settings = lazy(() => import('./pages/Settings'));
+const BoardStudio = lazy(() => import('./pages/BoardStudio'));
+const LearnPieces = lazy(() => import('./pages/LearnPieces'));
 const WalletPage = lazy(() => import('./pages/Wallet'));
 const config = createConfig({
   chains: [anvil, baseSepolia, base],
@@ -143,6 +147,8 @@ function Shell() {
               <Route key={p} path={p} element={<Account />} />
             ))}
             <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/board" element={<BoardStudio />} />
+            <Route path="/learn/pieces" element={<LearnPieces />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route
               path="*"
@@ -180,7 +186,7 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={query}>
       <BrowserRouter>
         <AuthProvider>
-          <Shell />
+          <AppearanceProvider><Shell /></AppearanceProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

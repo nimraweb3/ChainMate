@@ -1,14 +1,16 @@
 import { useState, type CSSProperties } from 'react';
 import { Chess, type Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import { sculptedPieces } from './ChessPieces';
+import { pieceCollections } from './ChessPieces';
+import {useAppearance} from '../appearance';
+import {boardThemes,type Appearance} from '../../../../packages/shared/experience';
 export default function Board({
   chess,
   onMove,
   disabled = false,
   flipped = false,
   lastMove,
-  warm = false,
+  appearance:override, arrows=false,
 }: {
   chess: Chess;
   onMove: (from: string, to: string, promotion: string) => boolean;
@@ -16,32 +18,37 @@ export default function Board({
   flipped?: boolean;
   lastMove?: { from: string; to: string };
   warm?: boolean;
+  appearance?:Appearance;
+  arrows?:boolean;
 }) {
+  const {appearance:saved}=useAppearance();const prefs=override||saved;
+  const theme=boardThemes.find(t=>t.id===prefs.boardThemeId)||boardThemes[0];
+  const light=prefs.customColors?prefs.customLightSquare:theme.light,dark=prefs.customColors?prefs.customDarkSquare:theme.dark;
   const [selected, setSelected] = useState<string | null>(null),
     [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null),
     [notation, setNotation] = useState(''),
     [message, setMessage] = useState('');
   const styles: Record<string, CSSProperties> = {};
-  if (lastMove) {
+  if (lastMove && prefs.highlightLastMove) {
     styles[lastMove.from] = {
       boxShadow: 'inset 0 0 0 3px #c3e1e88a',
-      backgroundColor: warm ? '#b39c75' : '#849fa7',
+      backgroundColor: prefs.highlightColor,
     };
     styles[lastMove.to] = {
       boxShadow: 'inset 0 0 0 3px #d5edf0bb',
-      backgroundColor: warm ? '#b39c75' : '#849fa7',
+      backgroundColor: prefs.highlightColor,
     };
   }
   if (selected) {
-    styles[selected] = { backgroundColor: '#8eafb8', boxShadow: 'inset 0 0 0 3px #e2f4f3' };
-    for (const m of chess.moves({ square: selected as Square, verbose: true }))
+    styles[selected] = { backgroundColor: prefs.selectionColor, boxShadow: 'inset 0 0 0 3px #e2f4f3' };
+    for (const m of prefs.showLegalMoves?chess.moves({ square: selected as Square, verbose: true }):[])
       styles[m.to] = {
         backgroundImage: chess.get(m.to)
-          ? 'radial-gradient(circle, transparent 58%, #b0dce5b0 60%, #b0dce5b0 69%, transparent 71%)'
-          : 'radial-gradient(circle, #213d4b80 17%, #d9f0ed70 19%, transparent 23%)',
+          ? `radial-gradient(circle, transparent 58%, ${prefs.legalColor}aa 60%, ${prefs.legalColor}aa 69%, transparent 71%)`
+          : `radial-gradient(circle, ${prefs.legalColor}99 17%, transparent 21%)`,
       };
   }
-  if (chess.isCheck()) {
+  if (chess.isCheck() && prefs.highlightCheck) {
     for (const rank of chess.board())
       for (const p of rank)
         if (p?.type === 'k' && p.color === chess.turn())
@@ -68,20 +75,22 @@ export default function Board({
   }
   return (
     <>
-      <div className={`chessboard-wrap atelier-board ${warm ? 'walnut-board' : ''}`}>
+      <div className={`chessboard-wrap atelier-board border-${prefs.border} ${prefs.highContrast?'high-contrast':''}`} data-theme={prefs.boardThemeId} data-pieces={prefs.pieceSetId}>
         <Chessboard
           options={{
             position: chess.fen(),
             boardOrientation: flipped ? 'black' : 'white',
-            pieces: sculptedPieces,
+            pieces: pieceCollections[prefs.pieceSetId],
+            showNotation:prefs.showCoordinates,
+            allowDrawingArrows:arrows,
             darkSquareStyle: {
-              backgroundColor: warm ? '#8b6c53' : '#596e7b',
-              backgroundImage: 'linear-gradient(135deg, #ffffff0a, #07101916)',
+              backgroundColor: dark,
+              backgroundImage: prefs.texture?'repeating-linear-gradient(15deg,transparent 0 6px,#00000008 7px 8px)':'none',
               boxShadow: 'inset 0 0 0 .5px #ffffff0a',
             },
             lightSquareStyle: {
-              backgroundColor: warm ? '#e2d5ba' : '#dce1dc',
-              backgroundImage: 'linear-gradient(135deg, #ffffff25, #758b9810)',
+              backgroundColor: light,
+              backgroundImage:'none',
               boxShadow: 'inset 0 0 0 .5px #0000000a',
             },
             darkSquareNotationStyle: { color: '#edf2ef', fontSize: '10px', fontWeight: 600 },
@@ -89,8 +98,8 @@ export default function Board({
             squareStyles: styles,
             allowDragging: !disabled,
             allowAutoScroll: false,
-            animationDurationInMs: 150,
-            showAnimations: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+            animationDurationInMs: {off:0,fast:100,normal:180,smooth:300}[prefs.animationSpeed],
+            showAnimations: prefs.animationSpeed!=='off'&&!prefs.reducedFeedback&&!matchMedia('(prefers-reduced-motion: reduce)').matches,
             onPieceDrop: ({ sourceSquare, targetSquare }) =>
               !!targetSquare && attempt(sourceSquare, targetSquare),
             onSquareClick: ({ square }) => click(square),
