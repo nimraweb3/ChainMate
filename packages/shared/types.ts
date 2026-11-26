@@ -5,6 +5,15 @@ export type User = {
   bio: string;
   joined: string;
   wallet?: string | null;
+  display_name?: string;
+  country?: string;
+  avatar?: string | null;
+  banner?: string | null;
+  private?: number;
+  wallet_public?: number;
+  email_verified?: number;
+  email?: string;
+  settings?: { board: 'slate' | 'warm'; muted: boolean; notifications: boolean; network: string };
 };
 export type Outcome = 'white' | 'black' | 'draw';
 export type GameState = {
