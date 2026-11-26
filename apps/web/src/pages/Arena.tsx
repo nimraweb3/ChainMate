@@ -327,6 +327,23 @@ export default function Arena() {
               )}
               {match.state === 2 && (
                 <>
+                  <Link to="/wallet">View wallet and transaction history</Link>
+                </>
+              )}
+              {match.state === 1 &&
+                !match.blackPaid &&
+                match.white.toLowerCase() === address?.toLowerCase() && (
+                  <button
+                    disabled={busy}
+                    onClick={() =>
+                      run(() => write(config!.address, escrowAbi, 'cancel', [match.id]))
+                    }
+                  >
+                    Cancel unjoined challenge
+                  </button>
+                )}
+              {match.state === 2 && (
+                <>
                   <button
                     className="button"
                     disabled={busy}

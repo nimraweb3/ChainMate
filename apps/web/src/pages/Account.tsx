@@ -56,9 +56,13 @@ export default function Account() {
   const url =
     pathname === '/leaderboard'
       ? '/leaderboard'
-      : pathname.startsWith('/profile/')
-        ? '/profile/' + username
-        : '/history';
+      : pathname === '/achievements'
+        ? '/achievements'
+        : pathname === '/dashboard' && user
+          ? '/profile/' + user.username
+          : pathname.startsWith('/profile/')
+            ? '/profile/' + username
+            : '/history';
   const resource = useResource<any>(isAuth ? '/auth/me' : url);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -314,9 +318,21 @@ export default function Account() {
         <h1>
           A game of <em>growth.</em>
         </h1>
+        {Array.isArray(resource.data) && resource.data.length > 0 && (
+          <div className="player-stat-strip">
+            {resource.data.map((a: any) => (
+              <div key={a.id}>
+                <ShieldCheck />
+                <h3>{a.name}</h3>
+                <p>{a.description}</p>
+                <small>Earned {new Date(a.earned).toLocaleDateString()}</small>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="empty-state">
           <ShieldCheck />
-          <h3>On-chain badges are coming later.</h3>
+          <h3>Every achievement starts on the board.</h3>
           <p>
             Verified match hashes are available in Arena settlements. Badge minting is not enabled.
           </p>
@@ -326,22 +342,39 @@ export default function Account() {
         </div>
       </div>
     );
-  const profile = pathname.startsWith('/profile/') ? resource.data?.user : user;
-  const games: GameState[] = pathname.startsWith('/profile/')
-    ? resource.data?.games || []
-    : resource.data || [];
+  const profile = pathname.startsWith('/profile/')
+    ? resource.data?.user
+    : pathname === '/dashboard'
+      ? resource.data?.user || user
+      : user;
+  const games: GameState[] =
+    pathname.startsWith('/profile/') || pathname === '/dashboard'
+      ? resource.data?.games || []
+      : resource.data || [];
   return (
     <div className="page">
+      {profile?.banner && (
+        <img
+          className="profile-banner"
+          src={'/api/media/' + profile.banner}
+          alt="Player profile banner"
+        />
+      )}
       <div className="profile-heading">
-        <div className="large-avatar">♔</div>
+        <div className="large-avatar">
+          {profile?.avatar ? <img src={'/api/media/' + profile.avatar} alt="Player avatar" /> : '♔'}
+        </div>
         <div>
           <div className="eyebrow">
             {pathname === '/history' ? 'YOUR GAMES, REMEMBERED' : 'A MEMBER OF THE CLUB'}
           </div>
           <h1>
-            {pathname === '/history' ? 'Every game tells a story.' : profile?.username || 'Player'}
+            {pathname === '/history'
+              ? 'Every game tells a story.'
+              : profile?.display_name || profile?.username || 'Player'}
           </h1>
           <p>{profile?.bio || 'One move closer to your best game.'}</p>
+          {profile?.display_name && <small>@{profile.username}</small>}
         </div>
         {profile && (
           <div className="rating">
@@ -350,49 +383,62 @@ export default function Account() {
           </div>
         )}
       </div>
+      {resource.data?.ratings?.length > 0 && (
+        <div className="player-stat-strip">
+          {resource.data.ratings.map((r: any) => (
+            <div key={r.category}>
+              <span>{r.category.toUpperCase()}</span>
+              <strong>{r.rating}</strong>
+              <small>{r.games} rated games</small>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="account-nav">
         <Link to="/dashboard">Overview</Link>
         <Link to="/history">Match history</Link>
         <Link to="/achievements">Achievements</Link>
         <Link to="/settings">Settings</Link>
+        <Link to="/wallet">Wallet</Link>
       </div>
       {Array.isArray(games) && profile && (
         <div className="player-stat-strip" aria-label="Results in recent match history">
           <div>
-            <span>RECENT GAMES</span>
-            <strong>{games.filter((g) => g.status === 'finished').length}</strong>
+            <span>{resource.data?.stats ? 'COMPLETED GAMES' : 'RECENT GAMES'}</span>
+            <strong>
+              {resource.data?.stats?.total ?? games.filter((g) => g.status === 'finished').length}
+            </strong>
           </div>
           <div>
             <span>WINS</span>
             <strong>
-              {
+              {resource.data?.stats?.wins ??
                 games.filter(
                   (g) =>
                     g.status === 'finished' &&
                     ((g.white === profile.id && g.outcome === 'white') ||
                       (g.black === profile.id && g.outcome === 'black')),
-                ).length
-              }
+                ).length}
             </strong>
           </div>
           <div>
             <span>LOSSES</span>
             <strong>
-              {
+              {resource.data?.stats?.losses ??
                 games.filter(
                   (g) =>
                     g.status === 'finished' &&
                     g.outcome !== 'draw' &&
                     ((g.white === profile.id && g.outcome === 'black') ||
                       (g.black === profile.id && g.outcome === 'white')),
-                ).length
-              }
+                ).length}
             </strong>
           </div>
           <div>
             <span>DRAWS</span>
             <strong>
-              {games.filter((g) => g.status === 'finished' && g.outcome === 'draw').length}
+              {resource.data?.stats?.draws ??
+                games.filter((g) => g.status === 'finished' && g.outcome === 'draw').length}
             </strong>
           </div>
         </div>
