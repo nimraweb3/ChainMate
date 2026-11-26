@@ -20,13 +20,13 @@ The frontend proxies `/api` and `/socket.io` to the API. Keep one dev server/API
 
 ## What works
 
-* Original responsive green/ivory/gold homepage, editorial typography, CSS/SVG chess artwork, scroll camera movement, light/dark themes and reduced motion.
-* Guest chess against Bitcoin, Ethereum and Solana: three real Stockfish worker configurations, no invented Elo claims.
-* Legal moves, castling, en passant, promotion choice, tap/drag and keyboard moves, last-move/check highlights, clocks, resignation, rematch, PGN download and completed-game replay.
-* Email/password registration/login/logout, salted password hashing, expiring cookie sessions, local password-reset mail, profiles and online history.
-* Private invitations, casual/rated quick matchmaking, authenticated Socket.IO, authoritative moves/clocks, reconnect state and atomic/idempotent Elo updates.
-* Injected EVM wallets, chain switching, SIWE authentication/linking, local demo-token faucet, two-player escrow, signed completed-game records, dispute period, settlement and recovery.
-* Foundry security/fuzz tests, rule/API tests, browser tests for bots and two-session multiplayer, and a two-wallet local-chain browser harness.
+- Original responsive green/ivory/gold homepage, editorial typography, CSS/SVG chess artwork, scroll camera movement, light/dark themes and reduced motion.
+- Guest chess against Bitcoin, Ethereum and Solana: three real Stockfish worker configurations, no invented Elo claims.
+- Legal moves, castling, en passant, promotion choice, tap/drag and keyboard moves, last-move/check highlights, clocks, resignation, rematch, PGN download and completed-game replay.
+- Email/password registration/login/logout, salted password hashing, expiring cookie sessions, local password-reset mail, profiles and online history.
+- Private invitations, casual/rated quick matchmaking, authenticated Socket.IO, authoritative moves/clocks, reconnect state and atomic/idempotent Elo updates.
+- Injected EVM wallets, chain switching, SIWE authentication/linking, local demo-token faucet, two-player escrow, signed completed-game records, dispute period, settlement and recovery.
+- Foundry security/fuzz tests, rule/API tests, browser tests for bots and two-session multiplayer, and a two-wallet local-chain browser harness.
 
 ## Local test-token Arena
 
@@ -108,13 +108,15 @@ The supplied `lets-scroll` SKILL.md informed camera pacing, static fallbacks, mo
 
 ## Security and limits
 
-The server and result signer are trusted. A record hash proves record consistency, not that a player avoided engine assistance. Contracts are unaudited and restricted to Anvil/Base Sepolia, with no mainnet support. The API is single-process, matchmaking is ephemeral, and production email, anti-cheat review, distributed coordination, durable event indexing and operational hardening remain unfinished. Optional tournaments, on-chain badges and advanced postgame analysis are explicitly unavailable rather than simulated.
+The server and result signer are trusted. A record hash proves record consistency, not that a player avoided engine assistance. Contracts are unaudited and restricted to Anvil/Base Sepolia; Base Mainnet wallet access is read-only. The Cloudflare runtime adds durable matchmaking, confirmed event indexing and optional Resend delivery. Production rollout, email delivery and real wallet-extension testing still require external configuration and verification. Optional tournaments, on-chain badges and advanced postgame analysis remain unavailable. See the root SECURITY.md and MAINNET_READINESS.md for current boundaries.
 
 Threefold repetition and the fifty-move rule are automatic club draws in this version. Exact tournament claim procedures and all rare dead-position/time-forfeit adjudications need further work; see `docs/GAME_ENGINE.md`.
 
 ## Deployment
 
-No public deployment is performed by the local setup script. The frontend can be hosted as Vite static output, but the API needs a persistent Node process and PostgreSQL. A static-only preview is not a deployed full-stack product. See `docs/DEPLOYMENT.md` before exposing the app.
+The Cloudflare-native implementation now lives in `apps/worker/`, using Hono, Durable Object WebSockets/alarms, D1 and controlled R2 profile uploads. Start it with `pnpm db:local`, `pnpm build`, then `pnpm dev:cloudflare` at **http://127.0.0.1:8787**. The original `pnpm dev` Node runtime remains available at 5173 for compatibility. New profile/wallet platform features use the Cloudflare runtime. See [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md) for exact provisioning, secret, staging, test and deployment commands. Staging is deployed at [chainmate-staging.chainmate.workers.dev](https://chainmate-staging.chainmate.workers.dev), with remote D1, R2 and Durable Objects.
+
+No public deployment is performed by the local setup script. The Cloudflare runtime deploys frontend assets and its API together. Only the legacy Node runtime requires a persistent Node process and PostgreSQL; its older deployment notes are in `docs/DEPLOYMENT.md`.
 
 ## Licensing and contributions
 

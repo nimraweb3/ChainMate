@@ -1,8 +1,11 @@
 packages:
   - apps/*
   - packages/*
+overrides:
+  'zod@>=4.0.0 <4.6.6': '^4.6.7'
 allowBuilds:
   '@foundry-rs/anvil': false
   '@foundry-rs/forge': false
+  '@reown/appkit': false
   esbuild: true
-  workerd: set this to true or false
+  workerd: true
