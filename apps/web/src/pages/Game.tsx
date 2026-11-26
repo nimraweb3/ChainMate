@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Chess } from 'chess.js';
-import { io, type Socket } from 'socket.io-client';
+import { realtime, type Realtime } from '../realtime';
 import {
   FlipVertical2,
   Download,
@@ -41,7 +41,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
     [index, setIndex] = useState<number | null>(replay ? 0 : null),
     [epoch, setEpoch] = useState(0);
   const worker = useRef<Worker | null>(null),
-    sock = useRef<Socket | null>(null),
+    sock = useRef<Realtime | null>(null),
     current = useRef(chess),
     lastTick = useRef(Date.now()),
     status = useRef(''),
@@ -164,7 +164,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
       return () => {
         alive = false;
       };
-    const s = io({ withCredentials: true });
+    const s = realtime(gameId);
     sock.current = s;
     s.on('connect', () => {
       setConnected(true);
@@ -196,6 +196,19 @@ export default function Game({ replay = false }: { replay?: boolean }) {
         );
     }
   }, [gameId, local, replay, user?.id]);
+  useEffect(() => {
+    if (local || replay || game?.status !== 'active') return;
+    const received = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - received;
+      const whiteTurn = game.fen.split(' ')[1] === 'w';
+      setTimes([
+        Math.max(0, game.whiteMs - (whiteTurn ? elapsed : 0)),
+        Math.max(0, game.blackMs - (whiteTurn ? 0 : elapsed)),
+      ]);
+    }, 100);
+    return () => clearInterval(timer);
+  }, [game, local, replay]);
   useEffect(() => {
     if (!local || !end) return;
     let saved: unknown[] = [];

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { io, type Socket } from 'socket.io-client';
+import { realtime, type Realtime } from '../realtime';
 import { Globe2, Users, BrainCircuit, Clock3 } from 'lucide-react';
 import { bots, controls, type Control } from '../../../../packages/shared/types';
 import { api, useAuth } from '../lib';
@@ -19,12 +19,16 @@ export default function Play() {
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [code, setCode] = useState(params.get('invite') || ''),
-    [socket, setSocket] = useState<Socket>();
+    [socket, setSocket] = useState<Realtime>();
   useEffect(() => {
     if (mode !== 'online' || !user) return;
-    const s = io({ withCredentials: true });
+    const s = realtime('queue');
     setSocket(s);
     s.on('match:found', (g) => navigate('/game/' + g.id));
+    s.on('queue:expired', () => {
+      setBusy(false);
+      setError('No rival found yet. You can search again.');
+    });
     s.on('connect_error', (e) => {
       setError(e.message);
       setBusy(false);
