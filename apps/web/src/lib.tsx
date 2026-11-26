@@ -21,7 +21,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loading, setLoading] = useState(true);
   async function refresh() {
     try {
-      setUser((await api('/auth/me')).user);
+      const next = (await api('/auth/me')).user as User | null;
+      setUser(next);
+      if (next?.settings) {
+        localStorage.setItem('cm-board', next.settings.board);
+        localStorage.setItem('cm-muted', String(next.settings.muted));
+      }
     } finally {
       setLoading(false);
     }
