@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Chess } from 'chess.js';
-import { controls, type Control, type GameState } from '../../../packages/shared/types';
+import { controlValues, type Control, type GameState } from '../../../packages/shared/types';
 import { elo, move, tick, position } from '../../../packages/game-core';
 import { type Env, type Member, statement as q, room, lobby, internal } from './env';
 import { member } from './auth';
@@ -118,6 +118,15 @@ export class GameRoom extends SerialObject {
   private broadcast(g: GameState) {
     for (const ws of this.ctx.getWebSockets()) send(ws, 'game:state', g);
   }
+  private presence(exclude?: WebSocket) {
+    const sockets = this.ctx.getWebSockets().filter((ws) => ws !== exclude);
+    const users = [
+      ...new Set(
+        sockets.map((ws) => (ws.deserializeAttachment() as Attachment)?.user).filter(Boolean),
+      ),
+    ];
+    for (const ws of sockets) send(ws, 'game:presence', users);
+  }
   async fetch(req: Request) {
     return this.serial(async () => {
       try {
@@ -152,6 +161,7 @@ export class GameRoom extends SerialObject {
           tick(g, Date.now());
           await this.persist(g);
           const pair = attach(this.ctx, req);
+          this.presence();
           send(pair[1], 'game:state', g);
           return new Response(null, { status: 101, webSocket: pair[0] });
         }
@@ -174,8 +184,8 @@ export class GameRoom extends SerialObject {
           p = packet.payload || {};
         if (![g.white, g.black].includes(u.id)) throw Error('Not a participant.');
         if (String(packet.event).startsWith('chat:')) {
-          const value = await chatEvent(this.env,g,u,packet.event,p,this.ctx.getWebSockets());
-          ws.send(JSON.stringify({ack:packet.id,ok:true,value}));
+          const value = await chatEvent(this.env, g, u, packet.event, p, this.ctx.getWebSockets());
+          ws.send(JSON.stringify({ ack: packet.id, ok: true, value }));
           return;
         }
         if (packet.event === 'game:join') {
@@ -239,11 +249,13 @@ export class GameRoom extends SerialObject {
     });
   }
   webSocketClose(ws: WebSocket) {
+    this.presence(ws);
     try {
       ws.close();
     } catch {}
   }
   webSocketError(ws: WebSocket) {
+    this.presence(ws);
     try {
       ws.close(1011, 'Connection error');
     } catch {}
@@ -258,7 +270,8 @@ export class Lobby extends SerialObject {
     black?: Member,
     chainMatch?: string,
   ) {
-    if (!(control in controls)) throw Error('Invalid time control.');
+    const timing = controlValues(control);
+    if (!timing) throw Error('Invalid time control.');
     const g: GameState = {
       id: chainMatch ? 'chain-' + chainMatch : crypto.randomUUID(),
       white: u.id,
@@ -272,10 +285,10 @@ export class Lobby extends SerialObject {
       status: black ? 'active' : 'waiting',
       outcome: null,
       reason: null,
-      whiteMs: controls[control][0] * 1000,
-      blackMs: controls[control][0] * 1000,
+      whiteMs: timing[0] * 1000,
+      blackMs: timing[0] * 1000,
       lastTick: black ? Date.now() : 0,
-      increment: controls[control][1],
+      increment: timing[1],
       control,
       rated,
       drawOffer: null,
@@ -347,8 +360,8 @@ export class Lobby extends SerialObject {
             g.black,
           ),
         );
-        const category =
-          g.control === '1+0' ? 'bullet' : ['3+2', '5+0'].includes(g.control) ? 'blitz' : 'rapid';
+        const duration = (controlValues(g.control)?.[0] || 600) + 40 * g.increment;
+        const category = duration < 180 ? 'bullet' : duration < 600 ? 'blitz' : 'rapid';
         const rs = (
           await q(
             this.env,
@@ -466,7 +479,7 @@ export class Lobby extends SerialObject {
         if (p.event === 'queue:leave') await this.ctx.storage.delete('q:' + u.id);
         else if (p.event === 'queue:join') {
           const control = p.payload.control as Control;
-          if (!(control in controls) || typeof p.payload.rated !== 'boolean')
+          if (!controlValues(control) || typeof p.payload.rated !== 'boolean')
             throw Error('Invalid queue.');
           if (await q(this.env, 'SELECT 1 FROM active_players WHERE user_id=?', u.id).first())
             throw Error('Finish your current game first.');

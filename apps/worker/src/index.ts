@@ -8,6 +8,7 @@ import { profiles } from './profiles';
 import { web3 } from './web3';
 import { experience } from './experience';
 import type { GameState } from '../../../packages/shared/types';
+import { controlValues } from '../../../packages/shared/types';
 export { GameRoom, Lobby } from './rooms';
 const app = new Hono<AppEnv>();
 app.use(
@@ -80,7 +81,10 @@ app.get('/api/history', async (c) => {
     ).results.map((g) => JSON.parse(g.state)),
   );
 });
-const control = z.enum(['1+0', '3+2', '5+0', '10+0', '15+10']);
+const control = z
+  .string()
+  .max(7)
+  .refine((v) => !!controlValues(v));
 app.post('/api/challenges', async (c) => {
   const user = requireUser(c),
     p = z.object({ control, rated: z.boolean().default(false) }).parse(await c.req.json());
@@ -156,8 +160,8 @@ export default {
           q(env, 'DELETE FROM challenges WHERE expires<?', Date.now()),
           q(env, 'DELETE FROM rate_limits WHERE until<?', Date.now()),
           q(env, 'DELETE FROM mail_outbox WHERE created<?', Date.now() - 86400000),
-          q(env, 'DELETE FROM chat_messages WHERE created<?', Date.now() - 30*86400000),
-          q(env, 'DELETE FROM chat_reports WHERE created<?', Date.now() - 90*86400000),
+          q(env, 'DELETE FROM chat_messages WHERE created<?', Date.now() - 30 * 86400000),
+          q(env, 'DELETE FROM chat_reports WHERE created<?', Date.now() - 90 * 86400000),
         ]),
       ]),
     );

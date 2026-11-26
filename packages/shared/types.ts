@@ -48,6 +48,14 @@ export const controls = {
   '15+10': [900, 10],
 } as const;
 export type Control = keyof typeof controls;
+export function controlValues(value: string): readonly [number, number] | null {
+  if (value in controls) return controls[value as Control];
+  const m = /^(\d{1,3})\+(\d{1,3})$/.exec(value);
+  if (!m) return null;
+  const minutes = Number(m[1]),
+    increment = Number(m[2]);
+  return minutes >= 1 && minutes <= 180 && increment <= 180 ? [minutes * 60, increment] : null;
+}
 export const bots = [
   {
     id: 'bitcoin',
