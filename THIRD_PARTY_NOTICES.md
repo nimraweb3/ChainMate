@@ -10,12 +10,12 @@ Before distributing a modified engine, publish the corresponding modified source
 
 ## Other principal dependencies
 
-* chess.js: BSD-2-Clause, https://github.com/jhlywa/chess.js
-* react-chessboard: MIT, https://github.com/Clariity/react-chessboard
-* React, Vite, React Router, Express, Socket.IO, wagmi, viem, OpenZeppelin: their published permissive licenses and notices.
-* PGlite: Apache-2.0; embedded PostgreSQL retains its own license.
-* Instrument Serif and Manrope: SIL Open Font License 1.1, included in their @fontsource packages.
-* Lucide icons: ISC, https://lucide.dev/license
-* Foundry: MIT OR Apache-2.0.
+- chess.js: BSD-2-Clause, https://github.com/jhlywa/chess.js
+- react-chessboard: MIT, https://github.com/Clariity/react-chessboard
+- React, Vite, React Router, Express, Socket.IO, wagmi, viem, OpenZeppelin: their published permissive licenses and notices.
+- PGlite: Apache-2.0; embedded PostgreSQL retains its own license.
+- Instrument Serif and Manrope: SIL Open Font License 1.1, included in their @fontsource packages.
+- Lucide icons: ISC, https://lucide.dev/license
+- Foundry: MIT OR Apache-2.0.
 
 No third-party photographs or proprietary chess artwork are used.
