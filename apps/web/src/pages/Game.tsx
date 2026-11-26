@@ -15,11 +15,18 @@ import { bots, controls, type Control, type GameState } from '../../../../packag
 import { result } from '../../../../packages/game-core';
 import { api, download, useAuth } from '../lib';
 import Board from '../components/Board';
+import {useAppearance} from '../appearance';
+import AppearanceControls from '../components/AppearanceControls';
+import CapturedPieces from '../components/CapturedPieces';
+import GameChat from '../components/GameChat';
+import {tone,unlockAudio} from '../sounds';
 function clock(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 export default function Game({ replay = false }: { replay?: boolean }) {
+  const {appearance,apply,error:appearanceError}=useAppearance();
+  const [tab,setTab]=useState('Moves'),[unread,setUnread]=useState(0),[focus,setFocus]=useState(false);
   const { gameId } = useParams(),
     [params] = useSearchParams(),
     { user } = useAuth();
@@ -33,8 +40,6 @@ export default function Game({ replay = false }: { replay?: boolean }) {
     [ready, setReady] = useState(false),
     [connected, setConnected] = useState(false),
     [flipped, setFlipped] = useState(false),
-    [muted, setMuted] = useState(localStorage.getItem('cm-muted') === 'true'),
-    [warm, setWarm] = useState(localStorage.getItem('cm-board') === 'warm'),
     [times, setTimes] = useState([initial, initial]),
     [end, setEnd] = useState(''),
     [confirm, setConfirm] = useState(false),
@@ -46,8 +51,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
     lastTick = useRef(Date.now()),
     status = useRef(''),
     resultDialog = useRef<HTMLDialogElement | null>(null),
-    orientationFor = useRef<string | null>(null),
-    sound = useRef<AudioContext | null>(null);
+    orientationFor = useRef<string | null>(null);
   current.current = chess;
   status.current = end;
   const history = chess.history({ verbose: true });
@@ -61,22 +65,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
     setIndex(replay ? 0 : null);
   }, [replay]);
   function beep() {
-    if (muted) return;
-    try {
-      const c = sound.current || new AudioContext();
-      sound.current = c;
-      const o = c.createOscillator(),
-        g = c.createGain();
-      o.connect(g);
-      g.connect(c.destination);
-      o.frequency.value = 430;
-      g.gain.setValueAtTime(0.035, c.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.08);
-      o.start();
-      o.stop(c.currentTime + 0.08);
-    } catch {
-      /* Audio is optional. */
-    }
+    tone('move',appearance);
   }
   function adopt(c: Chess) {
     setChess(c);
@@ -230,13 +219,9 @@ export default function Game({ replay = false }: { replay?: boolean }) {
       /* Storage may be unavailable in private browsing. */
     }
   }, [end]);
-  useEffect(
-    () => () => {
-      sound.current?.close();
-    },
-    [],
-  );
+  useEffect(()=>{if(appearance.boardOrientation!=='auto')setFlipped(appearance.boardOrientation==='black');},[appearance.boardOrientation]);
   function play(from: string, to: string, promotion: string) {
+    unlockAudio();
     if (finished || replay || index !== null) return false;
     try {
       const c = new Chess();
@@ -302,7 +287,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
     ? chess.turn() === 'w'
     : game && (chess.turn() === 'w' ? game.white : game.black) === user?.id;
   return (
-    <div className="game-page">
+    <div className={`game-page refined-game surface-${appearance.background} ${focus?'focus-game':''}`}>
       <div className="game-title">
         <Link to="/play">The playing room</Link>
         <span>
@@ -362,8 +347,9 @@ export default function Game({ replay = false }: { replay?: boolean }) {
             }
             flipped={flipped}
             lastMove={last}
-            warm={warm}
+            arrows={local||replay||finished}
           />
+          {index!==null&&<div className="history-banner">Reviewing move {index}. The live clock continues.<button onClick={()=>setIndex(null)}>Return to Live Position</button></div>}
           <div className="player-bar">
             <span className="avatar">♔</span>
             <div>
@@ -397,25 +383,31 @@ export default function Game({ replay = false }: { replay?: boolean }) {
               <FlipVertical2 size={16} /> Flip board
             </button>
             <button
-              aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+              aria-label={!appearance.soundEnabled ? 'Unmute sound' : 'Mute sound'}
               onClick={() => {
-                setMuted(!muted);
-                localStorage.setItem('cm-muted', String(!muted));
+                unlockAudio();void apply({...appearance,soundEnabled:!appearance.soundEnabled}).catch(()=>{});
               }}
             >
-              {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+              {!appearance.soundEnabled ? <VolumeX size={17} /> : <Volume2 size={17} />}
             </button>
             <button
               onClick={() => {
-                setWarm(!warm);
-                localStorage.setItem('cm-board', warm ? 'green' : 'warm');
+                setTab('Settings');
               }}
             >
-              Board: {warm ? 'Walnut' : 'Slate'}
+              Appearance
             </button>
+            <button aria-pressed={focus} onClick={()=>setFocus(!focus)}>{focus?'Exit focus':'Focus mode'}</button>
           </div>
+          <CapturedPieces history={history}/>
         </section>
         <aside className="game-panel">
+          <nav className="game-tabs" aria-label="Game panels">{['Moves','Chat','Match','Settings',...(game?.chainMatch?['Escrow']:[])].map(t=><button key={t} aria-pressed={tab===t} onClick={()=>{setTab(t);if(t==='Chat')setUnread(0);}}>{t}{t==='Chat'&&unread>0?` (${unread})`:''}</button>)}</nav>
+          {tab==='Settings'&&<section className="in-game-appearance"><AppearanceControls compact value={appearance} onChange={p=>{void apply(p).catch(()=>{});}}/><p role="status">{appearanceError||'Changes apply without interrupting your game.'}</p><Link to="/settings/board" target="_blank">Full Board Studio ↗</Link></section>}
+          {!local&&!replay&&gameId&&<GameChat gameId={gameId} open={tab==='Chat'} onUnread={()=>setUnread(n=>n+1)}/>}
+          {tab==='Chat'&&(local||replay)&&<p className="chat-empty">{local?'A quiet table with Stockfish. Human chat is available in multiplayer games.':'Chat is private to the live participants.'}</p>}
+          {tab==='Escrow'&&game?.chainMatch&&<div className="match-details"><h3>Verified match</h3><p>Appearance and chat never change your escrow.</p><Link to={'/arena/match/'+game.chainMatch}>Open escrow & settlement →</Link></div>}
+          <div hidden={tab!=='Moves'&&tab!=='Match'}>
           <div className="game-panel-head">
             <div className="eyebrow">
               {replay ? 'THE STORY OF YOUR GAME' : 'EVERY MOVE MATTERS'}
@@ -483,8 +475,8 @@ export default function Game({ replay = false }: { replay?: boolean }) {
                   <span>{i + 1}.</span>
                   {[0, 1].map((j) => (
                     <button
-                      disabled={!finished && !replay}
-                      className={index === i * 2 + j + 1 ? 'current' : ''}
+                      disabled={!history[i*2+j]}
+                      className={(index??history.length) === i * 2 + j + 1 ? 'current' : ''}
                       key={j}
                       onClick={() => setIndex(i * 2 + j + 1)}
                     >
@@ -495,7 +487,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
               ))
             )}
           </div>
-          {(finished || replay) && (
+          {(finished || replay || index!==null) && (
             <div className="replay-controls">
               <button
                 aria-label="Previous move"
@@ -515,12 +507,6 @@ export default function Game({ replay = false }: { replay?: boolean }) {
               <button onClick={() => setIndex(null)}>Final</button>
             </div>
           )}
-          <div className="captured">
-            Captured:{' '}
-            {history
-              .filter((m) => m.captured)
-              .map((m) => ({ p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' })[m.captured!])
-              .join(' ') || '—'}
           </div>
           {error && (
             <p className="error" role="alert">
