@@ -13,27 +13,28 @@ import {
 } from 'lucide-react';
 import { bots, controls, type Control, type GameState } from '../../../../packages/shared/types';
 import { result } from '../../../../packages/game-core';
+import { controlValues } from '../../../../packages/shared/types';
 import { api, download, useAuth } from '../lib';
 import Board from '../components/Board';
-import {useAppearance} from '../appearance';
+import { useAppearance } from '../appearance';
 import AppearanceControls from '../components/AppearanceControls';
 import CapturedPieces from '../components/CapturedPieces';
+import PlayerHeader from '../components/PlayerHeader';
 import GameChat from '../components/GameChat';
-import {tone,unlockAudio} from '../sounds';
-function clock(ms: number) {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
+import { tone, unlockAudio } from '../sounds';
 export default function Game({ replay = false }: { replay?: boolean }) {
-  const {appearance,apply,error:appearanceError}=useAppearance();
-  const [tab,setTab]=useState('Moves'),[unread,setUnread]=useState(0),[focus,setFocus]=useState(false);
+  const { appearance, apply, error: appearanceError } = useAppearance();
+  const [online, setOnline] = useState<string[]>([]);
+  const [tab, setTab] = useState('Moves'),
+    [unread, setUnread] = useState(0),
+    [focus, setFocus] = useState(false);
   const { gameId } = useParams(),
     [params] = useSearchParams(),
     { user } = useAuth();
   const local = gameId === 'bot';
   const bot = bots.find((b) => b.id === params.get('bot')) || bots[0];
   const control = (params.get('control') || '10+0') as Control;
-  const initial = (controls[control] || controls['10+0'])[0] * 1000;
+  const initial = (controlValues(control) || controls['10+0'])[0] * 1000;
   const [chess, setChess] = useState(() => new Chess()),
     [game, setGame] = useState<GameState>(),
     [error, setError] = useState(''),
@@ -64,9 +65,37 @@ export default function Game({ replay = false }: { replay?: boolean }) {
   useEffect(() => {
     setIndex(replay ? 0 : null);
   }, [replay]);
-  function beep() {
-    tone('move',appearance);
-  }
+  const sounded = useRef(0),
+    warned = useRef(false);
+  useEffect(() => {
+    if (history.length > sounded.current) {
+      const m = history.at(-1);
+      tone(
+        chess.isCheckmate()
+          ? 'end'
+          : chess.isCheck()
+            ? 'check'
+            : m?.captured
+              ? 'capture'
+              : m?.san.startsWith('O-O')
+                ? 'castle'
+                : 'move',
+        appearance,
+      );
+    }
+    sounded.current = history.length;
+  }, [chess]);
+  useEffect(() => {
+    if (end) tone('end', appearance);
+  }, [end]);
+  useEffect(() => {
+    const own = local ? times[0] : game?.white === user?.id ? times[0] : times[1];
+    if (own < 30000 && !warned.current && !finished) {
+      tone('warning', appearance);
+      warned.current = true;
+    }
+    if (own > 30000) warned.current = false;
+  }, [times, finished]);
   function adopt(c: Chess) {
     setChess(c);
     const r = result(c);
@@ -96,7 +125,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
           c.loadPgn(current.current.pgn());
           if (c.turn() !== 'b') return;
           c.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m.slice(4) || 'q' });
-          setTimes((t) => [t[0], t[1] + (controls[control] || controls['10+0'])[1] * 1000]);
+          setTimes((t) => [t[0], t[1] + (controlValues(control) || controls['10+0'])[1] * 1000]);
           adopt(c);
         } catch {
           setError('The engine returned an invalid move. Start a rematch.');
@@ -164,6 +193,7 @@ export default function Game({ replay = false }: { replay?: boolean }) {
     s.on('disconnect', () => setConnected(false));
     s.on('connect_error', (e) => setError(e.message));
     s.on('game:state', receive);
+    s.on('game:presence', setOnline);
     return () => {
       alive = false;
       s.disconnect();
@@ -219,7 +249,9 @@ export default function Game({ replay = false }: { replay?: boolean }) {
       /* Storage may be unavailable in private browsing. */
     }
   }, [end]);
-  useEffect(()=>{if(appearance.boardOrientation!=='auto')setFlipped(appearance.boardOrientation==='black');},[appearance.boardOrientation]);
+  useEffect(() => {
+    if (appearance.boardOrientation !== 'auto') setFlipped(appearance.boardOrientation === 'black');
+  }, [appearance.boardOrientation]);
   function play(from: string, to: string, promotion: string) {
     unlockAudio();
     if (finished || replay || index !== null) return false;
@@ -230,9 +262,8 @@ export default function Game({ replay = false }: { replay?: boolean }) {
       c.move({ from, to, promotion });
       if (local) {
         if (chess.turn() !== 'w' || !ready) return false;
-        setTimes((t) => [t[0] + (controls[control] || controls['10+0'])[1] * 1000, t[1]]);
+        setTimes((t) => [t[0] + (controlValues(control) || controls['10+0'])[1] * 1000, t[1]]);
         adopt(c);
-        beep();
       } else {
         if (!connected || !game) return false;
         sock.current?.emit(
@@ -242,7 +273,6 @@ export default function Game({ replay = false }: { replay?: boolean }) {
             if (!r.ok) setError(r.error);
             else {
               setError('');
-              beep();
             }
           },
         );
@@ -287,7 +317,9 @@ export default function Game({ replay = false }: { replay?: boolean }) {
     ? chess.turn() === 'w'
     : game && (chess.turn() === 'w' ? game.white : game.black) === user?.id;
   return (
-    <div className={`game-page refined-game surface-${appearance.background} ${focus?'focus-game':''}`}>
+    <div
+      className={`game-page refined-game surface-${appearance.background} ${focus ? 'focus-game' : ''}`}
+    >
       <div className="game-title">
         <Link to="/play">The playing room</Link>
         <span>
@@ -301,39 +333,28 @@ export default function Game({ replay = false }: { replay?: boolean }) {
       </div>
       <div className="game-layout">
         <section className="board-column">
-          <div className="player-bar">
-            <span
-              className={local ? 'avatar bot-avatar' : 'avatar'}
-              data-bot={local ? bot.id : undefined}
-            >
-              {local ? bot.symbol : '♚'}
-            </span>
-            <div>
-              <strong>
-                {flipped
-                  ? local
-                    ? user?.username || 'You'
-                    : game?.whiteName
-                  : local
-                    ? bot.name
-                    : game?.blackName || 'Opponent'}
-              </strong>
-              <small>
-                {local
-                  ? bot.difficulty + ' · ' + bot.title
-                  : connected
-                    ? 'Connected to game server'
-                    : 'Reconnecting…'}
-              </small>
-            </div>
-            <time
-              className={
-                chess.turn() === (flipped ? 'w' : 'b') && !finished ? 'clock active' : 'clock'
-              }
-            >
-              {clock(times[flipped ? 0 : 1])}
-            </time>
-          </div>
+          <PlayerHeader
+            name={
+              flipped
+                ? local
+                  ? user?.username || 'You'
+                  : game?.whiteName
+                : local
+                  ? bot.name
+                  : game?.blackName || 'Waiting for opponent'
+            }
+            ms={times[flipped ? 0 : 1]}
+            active={chess.turn() === (flipped ? 'w' : 'b') && !finished}
+            botId={local && !flipped ? bot.id : undefined}
+            subtitle={local && !flipped ? bot.difficulty + ' · ' + bot.title : undefined}
+            connection={
+              !connected
+                ? 'Reconnecting…'
+                : online.includes((flipped ? game?.white : game?.black) || '')
+                  ? 'Online'
+                  : 'Offline'
+            }
+          />
           <Board
             chess={displayed}
             onMove={play}
@@ -346,38 +367,37 @@ export default function Game({ replay = false }: { replay?: boolean }) {
               (!local && (!connected || game?.status !== 'active'))
             }
             flipped={flipped}
-            lastMove={last}
-            arrows={local||replay||finished}
+            lastMove={index === null ? last : displayed.history({ verbose: true }).at(-1)}
+            arrows={local || replay || finished}
           />
-          {index!==null&&<div className="history-banner">Reviewing move {index}. The live clock continues.<button onClick={()=>setIndex(null)}>Return to Live Position</button></div>}
-          <div className="player-bar">
-            <span className="avatar">♔</span>
-            <div>
-              <strong>
-                {flipped
-                  ? local
-                    ? bot.name
-                    : game?.blackName
-                  : local
-                    ? user?.username || 'You'
-                    : game?.whiteName || 'You'}
-              </strong>
-              <small>
-                {local
-                  ? 'Practice makes progress'
-                  : game?.rated
-                    ? 'Rated club match'
-                    : 'Friendly competition'}
-              </small>
+          {index !== null && (
+            <div className="history-banner">
+              Reviewing move {index}. The live clock continues.
+              <button onClick={() => setIndex(null)}>Return to Live Position</button>
             </div>
-            <time
-              className={
-                chess.turn() === (flipped ? 'b' : 'w') && !finished ? 'clock active' : 'clock'
-              }
-            >
-              {clock(times[flipped ? 1 : 0])}
-            </time>
-          </div>
+          )}
+          <PlayerHeader
+            name={
+              flipped
+                ? local
+                  ? bot.name
+                  : game?.blackName || 'Opponent'
+                : local
+                  ? user?.username || 'You'
+                  : game?.whiteName || 'You'
+            }
+            ms={times[flipped ? 1 : 0]}
+            active={chess.turn() === (flipped ? 'b' : 'w') && !finished}
+            botId={local && flipped ? bot.id : undefined}
+            subtitle={local ? (flipped ? bot.difficulty : 'Practice · Your side') : undefined}
+            connection={
+              !connected
+                ? 'Reconnecting…'
+                : online.includes((flipped ? game?.black : game?.white) || '')
+                  ? 'Online'
+                  : 'Offline'
+            }
+          />
           <div className="board-tools">
             <button onClick={() => setFlipped((x) => !x)}>
               <FlipVertical2 size={16} /> Flip board
@@ -385,7 +405,10 @@ export default function Game({ replay = false }: { replay?: boolean }) {
             <button
               aria-label={!appearance.soundEnabled ? 'Unmute sound' : 'Mute sound'}
               onClick={() => {
-                unlockAudio();void apply({...appearance,soundEnabled:!appearance.soundEnabled}).catch(()=>{});
+                unlockAudio();
+                void apply({ ...appearance, soundEnabled: !appearance.soundEnabled }).catch(
+                  () => {},
+                );
               }}
             >
               {!appearance.soundEnabled ? <VolumeX size={17} /> : <Volume2 size={17} />}
@@ -397,116 +420,209 @@ export default function Game({ replay = false }: { replay?: boolean }) {
             >
               Appearance
             </button>
-            <button aria-pressed={focus} onClick={()=>setFocus(!focus)}>{focus?'Exit focus':'Focus mode'}</button>
-          </div>
-          <CapturedPieces history={history}/>
-        </section>
-        <aside className="game-panel">
-          <nav className="game-tabs" aria-label="Game panels">{['Moves','Chat','Match','Settings',...(game?.chainMatch?['Escrow']:[])].map(t=><button key={t} aria-pressed={tab===t} onClick={()=>{setTab(t);if(t==='Chat')setUnread(0);}}>{t}{t==='Chat'&&unread>0?` (${unread})`:''}</button>)}</nav>
-          {tab==='Settings'&&<section className="in-game-appearance"><AppearanceControls compact value={appearance} onChange={p=>{void apply(p).catch(()=>{});}}/><p role="status">{appearanceError||'Changes apply without interrupting your game.'}</p><Link to="/settings/board" target="_blank">Full Board Studio ↗</Link></section>}
-          {!local&&!replay&&gameId&&<GameChat gameId={gameId} open={tab==='Chat'} onUnread={()=>setUnread(n=>n+1)}/>}
-          {tab==='Chat'&&(local||replay)&&<p className="chat-empty">{local?'A quiet table with Stockfish. Human chat is available in multiplayer games.':'Chat is private to the live participants.'}</p>}
-          {tab==='Escrow'&&game?.chainMatch&&<div className="match-details"><h3>Verified match</h3><p>Appearance and chat never change your escrow.</p><Link to={'/arena/match/'+game.chainMatch}>Open escrow & settlement →</Link></div>}
-          <div hidden={tab!=='Moves'&&tab!=='Match'}>
-          <div className="game-panel-head">
-            <div className="eyebrow">
-              {replay ? 'THE STORY OF YOUR GAME' : 'EVERY MOVE MATTERS'}
-            </div>
-            <h2>
-              {finished
-                ? 'A game to remember.'
-                : game?.status === 'waiting'
-                  ? 'Your table is ready.'
-                  : local && !ready
-                    ? 'Preparing your opponent…'
-                    : myTurn
-                      ? 'Your move.'
-                      : 'A moment to think.'}
-            </h2>
-            <p aria-live="polite">
-              {end ||
-                (chess.isCheck()
-                  ? 'Check. Protect your king.'
-                  : local
-                    ? 'A little patience. A little possibility.'
-                    : game?.status === 'waiting'
-                      ? 'Invite a friend to take the other seat.'
-                      : 'Engine assistance is not permitted.')}
-            </p>
-          </div>
-          {game?.status === 'waiting' && (
-            <div className="invite">
-              <label>
-                Private invitation
-                <input readOnly value={location.origin + '/play/friend?invite=' + game.id} />
-              </label>
-              <button
-                onClick={() => {
-                  navigator.clipboard
-                    .writeText(location.origin + '/play/friend?invite=' + game.id)
-                    .then(() => setError('Invitation copied.'))
-                    .catch(() => setError('Copy the invitation from the field.'));
-                }}
-              >
-                Copy invitation
-              </button>
-              <small>Expires 15 minutes after creation.</small>
-            </div>
-          )}
-          <div className="move-header">
-            <span>MOVE HISTORY</span>
-            <button
-              aria-label="Download PGN"
-              onClick={() => download(chess.pgn(), 'chainmate.pgn')}
-            >
-              <Download size={17} />
+            <button aria-pressed={focus} onClick={() => setFocus(!focus)}>
+              {focus ? 'Exit focus' : 'Focus mode'}
             </button>
           </div>
-          <div className="move-list">
-            {!history.length ? (
-              <div className="empty-moves">
-                <span>♙</span>Your story begins
-                <br />
-                with the first move.
-              </div>
-            ) : (
-              Array.from({ length: Math.ceil(history.length / 2) }, (_, i) => (
-                <div className="move-pair" key={i}>
-                  <span>{i + 1}.</span>
-                  {[0, 1].map((j) => (
-                    <button
-                      disabled={!history[i*2+j]}
-                      className={(index??history.length) === i * 2 + j + 1 ? 'current' : ''}
-                      key={j}
-                      onClick={() => setIndex(i * 2 + j + 1)}
-                    >
-                      {history[i * 2 + j]?.san || ''}
-                    </button>
-                  ))}
-                </div>
-              ))
-            )}
-          </div>
-          {(finished || replay || index!==null) && (
-            <div className="replay-controls">
-              <button
-                aria-label="Previous move"
-                onClick={() => setIndex((i) => Math.max(0, (i ?? history.length) - 1))}
-              >
-                <ChevronLeft />
-              </button>
+          <CapturedPieces history={history} />
+        </section>
+        <aside className="game-panel">
+          {tab === 'Chat' && (
+            <div className="mobile-clock-summary">
               <span>
-                {index ?? history.length} / {history.length}
+                White {Math.floor(times[0] / 60000)}:
+                {String(Math.ceil(times[0] / 1000) % 60).padStart(2, '0')}
               </span>
-              <button
-                aria-label="Next move"
-                onClick={() => setIndex((i) => Math.min(history.length, (i ?? history.length) + 1))}
-              >
-                <ChevronRight />
-              </button>
-              <button onClick={() => setIndex(null)}>Final</button>
+              <span>
+                Black {Math.floor(times[1] / 60000)}:
+                {String(Math.ceil(times[1] / 1000) % 60).padStart(2, '0')}
+              </span>
+              <button onClick={() => setTab('Moves')}>Close chat</button>
             </div>
           )}
+          <nav className="game-tabs" aria-label="Game panels">
+            {['Moves', 'Chat', 'Match', 'Settings', ...(game?.chainMatch ? ['Escrow'] : [])].map(
+              (t) => (
+                <button
+                  key={t}
+                  aria-pressed={tab === t}
+                  onClick={() => {
+                    setTab(t);
+                    if (t === 'Chat') setUnread(0);
+                  }}
+                >
+                  {t}
+                  {t === 'Chat' && unread > 0 ? ` (${unread})` : ''}
+                </button>
+              ),
+            )}
+          </nav>
+          {tab === 'Settings' && (
+            <section className="in-game-appearance">
+              <AppearanceControls
+                compact
+                value={appearance}
+                onChange={(p) => {
+                  void apply(p).catch(() => {});
+                }}
+              />
+              <p role="status">
+                {appearanceError || 'Changes apply without interrupting your game.'}
+              </p>
+              <Link to="/settings/board" target="_blank">
+                Full Board Studio ↗
+              </Link>
+            </section>
+          )}
+          {!local && !replay && gameId && (
+            <GameChat
+              gameId={gameId}
+              open={tab === 'Chat'}
+              onUnread={() => setUnread((n) => n + 1)}
+            />
+          )}
+          {tab === 'Chat' && (local || replay) && (
+            <p className="chat-empty">
+              {local
+                ? 'A quiet table with Stockfish. Human chat is available in multiplayer games.'
+                : 'Chat is private to the live participants.'}
+            </p>
+          )}
+          {tab === 'Escrow' && game?.chainMatch && (
+            <div className="match-details">
+              <h3>Verified match</h3>
+              <p>Appearance and chat never change your escrow.</p>
+              <Link to={'/arena/match/' + game.chainMatch}>Open escrow & settlement →</Link>
+            </div>
+          )}
+          <div hidden={tab !== 'Moves' && tab !== 'Match'}>
+            {tab === 'Match' && (
+              <div className="match-details">
+                <h3>Your table</h3>
+                <dl>
+                  <dt>Time control</dt>
+                  <dd>{game?.control || control}</dd>
+                  <dt>Format</dt>
+                  <dd>{local ? 'Local practice' : game?.rated ? 'Rated chess' : 'Casual chess'}</dd>
+                  <dt>Connection</dt>
+                  <dd>
+                    {local
+                      ? 'Stockfish on this device'
+                      : connected
+                        ? 'Connected to authoritative game server'
+                        : 'Reconnecting'}
+                  </dd>
+                  <dt>Players</dt>
+                  <dd>
+                    {local
+                      ? `You · ${bot.name}`
+                      : `${game?.whiteName || 'White'} · ${game?.blackName || 'Waiting'}`}
+                  </dd>
+                </dl>
+                <p>Appearance is personal. The official position and clocks remain shared.</p>
+              </div>
+            )}
+            <div className="game-panel-head">
+              <div className="eyebrow">
+                {replay ? 'THE STORY OF YOUR GAME' : 'EVERY MOVE MATTERS'}
+              </div>
+              <h2>
+                {finished
+                  ? 'A game to remember.'
+                  : game?.status === 'waiting'
+                    ? 'Your table is ready.'
+                    : local && !ready
+                      ? 'Preparing your opponent…'
+                      : myTurn
+                        ? 'Your move.'
+                        : 'A moment to think.'}
+              </h2>
+              <p aria-live="polite">
+                {end ||
+                  (chess.isCheck()
+                    ? 'Check. Protect your king.'
+                    : local
+                      ? 'A little patience. A little possibility.'
+                      : game?.status === 'waiting'
+                        ? 'Invite a friend to take the other seat.'
+                        : 'Engine assistance is not permitted.')}
+              </p>
+            </div>
+            {game?.status === 'waiting' && (
+              <div className="invite">
+                <label>
+                  Private invitation
+                  <input readOnly value={location.origin + '/play/friend?invite=' + game.id} />
+                </label>
+                <button
+                  onClick={() => {
+                    navigator.clipboard
+                      .writeText(location.origin + '/play/friend?invite=' + game.id)
+                      .then(() => setError('Invitation copied.'))
+                      .catch(() => setError('Copy the invitation from the field.'));
+                  }}
+                >
+                  Copy invitation
+                </button>
+                <small>Expires 15 minutes after creation.</small>
+              </div>
+            )}
+            <div className="move-header">
+              <span>MOVE HISTORY</span>
+              <button
+                aria-label="Download PGN"
+                onClick={() => download(chess.pgn(), 'chainmate.pgn')}
+              >
+                <Download size={17} />
+              </button>
+            </div>
+            <div className="move-list">
+              {!history.length ? (
+                <div className="empty-moves">
+                  <span>♙</span>Your story begins
+                  <br />
+                  with the first move.
+                </div>
+              ) : (
+                Array.from({ length: Math.ceil(history.length / 2) }, (_, i) => (
+                  <div className="move-pair" key={i}>
+                    <span>{i + 1}.</span>
+                    {[0, 1].map((j) => (
+                      <button
+                        disabled={!history[i * 2 + j]}
+                        className={(index ?? history.length) === i * 2 + j + 1 ? 'current' : ''}
+                        key={j}
+                        onClick={() => setIndex(i * 2 + j + 1)}
+                      >
+                        {history[i * 2 + j]?.san || ''}
+                      </button>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+            {(finished || replay || index !== null) && (
+              <div className="replay-controls">
+                <button
+                  aria-label="Previous move"
+                  onClick={() => setIndex((i) => Math.max(0, (i ?? history.length) - 1))}
+                >
+                  <ChevronLeft />
+                </button>
+                <span>
+                  {index ?? history.length} / {history.length}
+                </span>
+                <button
+                  aria-label="Next move"
+                  onClick={() =>
+                    setIndex((i) => Math.min(history.length, (i ?? history.length) + 1))
+                  }
+                >
+                  <ChevronRight />
+                </button>
+                <button onClick={() => setIndex(null)}>Final</button>
+              </div>
+            )}
           </div>
           {error && (
             <p className="error" role="alert">
