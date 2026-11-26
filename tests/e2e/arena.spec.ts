@@ -136,6 +136,23 @@ test('two wallets fund, play, authorize and settle a real local escrow', async (
     }),
   ).toBe(beforeB - 5000000n);
   await a.screenshot({ path: '.local/arena-settled.png', fullPage: true });
+  const health = await (await a.request.get('/api/health')).json();
+  if (health.realtime === 'durable-objects') {
+    const id = matchUrl.split('/').at(-1);
+    await a.request.get('/cdn-cgi/local/scheduled');
+    const activity = await (await a.request.get('/api/web3/activity')).json();
+    const events = activity.transactions.filter(
+      (event: { payload: string }) => JSON.parse(event.payload).id === id,
+    );
+    expect(events.some((event: { name: string }) => event.name === 'Settled')).toBe(true);
+    await a.request.get('/cdn-cgi/local/scheduled');
+    const replay = await (await a.request.get('/api/web3/activity')).json();
+    expect(
+      replay.transactions.filter(
+        (event: { payload: string }) => JSON.parse(event.payload).id === id,
+      ),
+    ).toHaveLength(events.length);
+  }
   await ca.close();
   await cb.close();
 });
