@@ -23,4 +23,7 @@ contract ChessEscrowTest {
  function testFundingDeadlineBoundary() public {vm.warp(block.timestamp+900);vm.expectRevert();vm.prank(a);e.fund(id);}
  function testUnfundedResult() public {uint256 expiry=block.timestamp+600;bytes memory s=signature(1,0,expiry,signerKey,address(e),31337);vm.expectRevert();e.submitResult(id,1,keccak256('record'),0,expiry,s);}
  function testFuzzConservation(uint8 outcome) public {outcome=uint8(uint256(outcome)%3+1);fund();result(outcome);vm.warp(block.timestamp+120);e.settle(id);require(t.balanceOf(a)+t.balanceOf(b)+t.balanceOf(address(e))==2000e6);}
+ function testCreatorCanCancelBeforeOpponentFunds() public {vm.prank(a);e.fund(id);vm.prank(a);e.cancel(id);require(t.balanceOf(a)==1000e6);vm.expectRevert();vm.prank(a);e.cancel(id);}
+ function testCannotCancelOpponentDeposit() public {vm.prank(b);e.fund(id);vm.expectRevert();vm.prank(a);e.cancel(id);}
+ function testUnauthorizedCancellation() public {vm.expectRevert();vm.prank(b);e.cancel(id);}
 }

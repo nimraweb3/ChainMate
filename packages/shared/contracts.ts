@@ -6,6 +6,7 @@ export const escrowAbi = parseAbi([
   'function dispute(bytes32 id,bytes32 evidence)',
   'function settle(bytes32 id)',
   'function recover(bytes32 id)',
+  'function cancel(bytes32 id)',
   'function nonces(bytes32) view returns(uint256)',
   'function matches(bytes32) view returns(address white,address black,uint256 stake,uint64 fundingDeadline,uint64 recoveryDeadline,uint64 disputeDeadline,uint8 state,bool whitePaid,bool blackPaid,uint8 outcome,bytes32 recordHash)',
 ]);
