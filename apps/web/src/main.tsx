@@ -7,11 +7,11 @@ import { WagmiProvider, createConfig, http, useAccount } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { anvil, baseSepolia, base } from 'wagmi/chains';
 import { AuthProvider, useAuth } from './lib';
-import {AppearanceProvider} from './appearance';
-import './experience.css';
+import { AppearanceProvider } from './appearance';
 import Home from './pages/Home';
 import './style.css';
 import './redesign.css';
+import './experience.css';
 const Play = lazy(() => import('./pages/Play'));
 const Game = lazy(() => import('./pages/Game'));
 const Account = lazy(() => import('./pages/Account'));
@@ -172,6 +172,8 @@ function Shell() {
         <span>A timeless game. A new generation.</span>
         <div>
           <Link to="/settings">Preferences</Link>
+          <Link to="/settings/board">Board Studio</Link>
+          <Link to="/learn/pieces">Learn chess</Link>
           <Link to="/arena">Testnet only</Link>
           <a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noreferrer">
             Powered by Stockfish
@@ -186,7 +188,9 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={query}>
       <BrowserRouter>
         <AuthProvider>
-          <AppearanceProvider><Shell /></AppearanceProvider>
+          <AppearanceProvider>
+            <Shell />
+          </AppearanceProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

@@ -2,15 +2,16 @@ import { useState, type CSSProperties } from 'react';
 import { Chess, type Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { pieceCollections } from './ChessPieces';
-import {useAppearance} from '../appearance';
-import {boardThemes,type Appearance} from '../../../../packages/shared/experience';
+import { useAppearance } from '../appearance';
+import { boardThemes, type Appearance } from '../../../../packages/shared/experience';
 export default function Board({
   chess,
   onMove,
   disabled = false,
   flipped = false,
   lastMove,
-  appearance:override, arrows=false,
+  appearance: override,
+  arrows = false,
 }: {
   chess: Chess;
   onMove: (from: string, to: string, promotion: string) => boolean;
@@ -18,12 +19,14 @@ export default function Board({
   flipped?: boolean;
   lastMove?: { from: string; to: string };
   warm?: boolean;
-  appearance?:Appearance;
-  arrows?:boolean;
+  appearance?: Appearance;
+  arrows?: boolean;
 }) {
-  const {appearance:saved}=useAppearance();const prefs=override||saved;
-  const theme=boardThemes.find(t=>t.id===prefs.boardThemeId)||boardThemes[0];
-  const light=prefs.customColors?prefs.customLightSquare:theme.light,dark=prefs.customColors?prefs.customDarkSquare:theme.dark;
+  const { appearance: saved } = useAppearance();
+  const prefs = override || saved;
+  const theme = boardThemes.find((t) => t.id === prefs.boardThemeId) || boardThemes[0];
+  const light = prefs.customColors ? prefs.customLightSquare : theme.light,
+    dark = prefs.customColors ? prefs.customDarkSquare : theme.dark;
   const [selected, setSelected] = useState<string | null>(null),
     [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null),
     [notation, setNotation] = useState(''),
@@ -40,8 +43,13 @@ export default function Board({
     };
   }
   if (selected) {
-    styles[selected] = { backgroundColor: prefs.selectionColor, boxShadow: 'inset 0 0 0 3px #e2f4f3' };
-    for (const m of prefs.showLegalMoves?chess.moves({ square: selected as Square, verbose: true }):[])
+    styles[selected] = {
+      backgroundColor: prefs.selectionColor,
+      boxShadow: 'inset 0 0 0 3px #e2f4f3',
+    };
+    for (const m of prefs.showLegalMoves
+      ? chess.moves({ square: selected as Square, verbose: true })
+      : [])
       styles[m.to] = {
         backgroundImage: chess.get(m.to)
           ? `radial-gradient(circle, transparent 58%, ${prefs.legalColor}aa 60%, ${prefs.legalColor}aa 69%, transparent 71%)`
@@ -75,22 +83,29 @@ export default function Board({
   }
   return (
     <>
-      <div className={`chessboard-wrap atelier-board border-${prefs.border} ${prefs.highContrast?'high-contrast':''}`} data-theme={prefs.boardThemeId} data-pieces={prefs.pieceSetId}>
+      <div
+        className={`chessboard-wrap atelier-board border-${prefs.border} ${prefs.highContrast ? 'high-contrast' : ''}`}
+        data-theme={prefs.boardThemeId}
+        data-pieces={prefs.pieceSetId}
+        data-fen={chess.fen()}
+      >
         <Chessboard
           options={{
             position: chess.fen(),
             boardOrientation: flipped ? 'black' : 'white',
             pieces: pieceCollections[prefs.pieceSetId],
-            showNotation:prefs.showCoordinates,
-            allowDrawingArrows:arrows,
+            showNotation: prefs.showCoordinates,
+            allowDrawingArrows: arrows,
             darkSquareStyle: {
               backgroundColor: dark,
-              backgroundImage: prefs.texture?'repeating-linear-gradient(15deg,transparent 0 6px,#00000008 7px 8px)':'none',
+              backgroundImage: prefs.texture
+                ? 'repeating-linear-gradient(15deg,transparent 0 6px,#00000008 7px 8px)'
+                : 'none',
               boxShadow: 'inset 0 0 0 .5px #ffffff0a',
             },
             lightSquareStyle: {
               backgroundColor: light,
-              backgroundImage:'none',
+              backgroundImage: 'none',
               boxShadow: 'inset 0 0 0 .5px #0000000a',
             },
             darkSquareNotationStyle: { color: '#edf2ef', fontSize: '10px', fontWeight: 600 },
@@ -98,8 +113,13 @@ export default function Board({
             squareStyles: styles,
             allowDragging: !disabled,
             allowAutoScroll: false,
-            animationDurationInMs: {off:0,fast:100,normal:180,smooth:300}[prefs.animationSpeed],
-            showAnimations: prefs.animationSpeed!=='off'&&!prefs.reducedFeedback&&!matchMedia('(prefers-reduced-motion: reduce)').matches,
+            animationDurationInMs: { off: 0, fast: 100, normal: 180, smooth: 300 }[
+              prefs.animationSpeed
+            ],
+            showAnimations:
+              prefs.animationSpeed !== 'off' &&
+              !prefs.reducedFeedback &&
+              !matchMedia('(prefers-reduced-motion: reduce)').matches,
             onPieceDrop: ({ sourceSquare, targetSquare }) =>
               !!targetSquare && attempt(sourceSquare, targetSquare),
             onSquareClick: ({ square }) => click(square),
