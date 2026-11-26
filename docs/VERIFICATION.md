@@ -1,4 +1,18 @@
-# Verification — 25 November 2026
+# Verification — 26 November 2026
+
+## Cloudflare implementation
+
+- Frontend production build, application and Worker TypeScript checks, and ESLint passed.
+- 15 Vitest tests and 21 Solidity tests passed.
+- All 13 Cloudflare Chromium scenarios passed across the full run (12 passed) and a focused rerun of the profile suite (2 passed). The profile assertion was fixed to wait for avatar decoding rather than reading naturalWidth immediately after reload.
+- Coverage includes D1 profiles/settings, R2 JPEG upload and private media, verification/reset/session revocation/account deletion, illegal and duplicate moves, exactly-once ratings, idle clock alarms, matchmaking, reconnect/replay, real Stockfish, and actual Anvil escrow settlement. Confirmed event indexing and repeated indexing without duplicates passed.
+- Worker deployment dry-run and local D1 migrations passed. Local Cloudflare runtime: http://127.0.0.1:8787.
+- Mobile metallic board and wallet screenshots were visually inspected.
+- The latest production dependency audit reports one high advisory in transitive Zod 3 dependencies introduced by WalletConnect. The application's Zod 4 is patched; a Zod 4-only override does not resolve the older third-party dependency. Do not describe the current dependency audit as clean.
+- Staging deployed to https://chainmate-staging.chainmate.workers.dev with remote D1, R2 and Durable Objects. HTTPS health returns 200. Initial TLS propagation failures resolved without bypassing certificate validation. Email provider delivery, public-testnet contracts, WalletConnect relay, real browser extensions and Mainnet balances remain externally unverified.
+- Hosted Chromium run: **7 passed (1.1m)** against the HTTPS staging URL, covering profile/settings reload, private R2 avatar upload, homepage/mobile/reduced-motion behavior, all three Stockfish bots, and two registered players creating a challenge, exchanging moves, reconnecting, resigning and replaying.
+
+## Earlier redesign verification (25 November)
 
 ## Executed checks
 

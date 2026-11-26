@@ -1,0 +1,12 @@
+# Local development only. Copy to .dev.vars; do not commit real values.
+CHAIN_ID=31337
+RPC_URL=http://127.0.0.1:8545
+ESCROW_ADDRESS=
+TOKEN_ADDRESS=
+RESULT_SIGNER_KEY=
+INDEX_START_BLOCK=0
+# Optional real email provider. Local mode writes a D1 development outbox instead.
+EMAIL_API_KEY=
+EMAIL_FROM=
+BASE_RPC_URL=https://mainnet.base.org
+BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
